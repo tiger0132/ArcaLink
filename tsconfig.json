@@ -1,0 +1,48 @@
+{
+	"ts-node": {
+		"files": true
+	},
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Node",
+		"resolveJsonModule": true,
+		"lib": [
+			"ES2018",
+			"ES2019",
+			"ES2020",
+			"ESNext"
+		],
+		"preserveConstEnums": true,
+		"incremental": true,
+		"declaration": true,
+		"sourceMap": true,
+		"importHelpers": true,
+		"strict": true,
+		"strictFunctionTypes": true,
+		"strictBindCallApply": true,
+		"pretty": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"esModuleInterop": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"outDir": "./dist",
+		"baseUrl": "./",
+		"paths": {
+			"@/*": [
+				"src/*"
+			]
+		},
+		"plugins": [
+			{
+				"transform": "@zerollup/ts-transform-paths",
+			}
+		],
+	},
+	"include": [
+		"src/**/*"
+	]
+}
