@@ -13,6 +13,7 @@
   "devDependencies": {
     "@types/fs-extra": "^9.0.13",
     "@types/js-yaml": "^4.0.5",
+    "@types/klaw": "^3.0.3",
     "@types/lodash-es": "^4.17.6",
     "@types/node": "^17.0.23",
     "@zerollup/ts-transform-paths": "^1.7.18",
@@ -26,6 +27,7 @@
     "chokidar": "^3.5.3",
     "fs-extra": "^10.0.1",
     "js-yaml": "^4.1.0",
+    "klaw": "^4.0.1",
     "lodash-es": "^4.17.21",
     "winston": "^3.7.2",
     "winston-daily-rotate-file": "^4.6.1",

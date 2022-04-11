@@ -3,12 +3,14 @@ lockfileVersion: 5.3
 specifiers:
   '@types/fs-extra': ^9.0.13
   '@types/js-yaml': ^4.0.5
+  '@types/klaw': ^3.0.3
   '@types/lodash-es': ^4.17.6
   '@types/node': ^17.0.23
   '@zerollup/ts-transform-paths': ^1.7.18
   chokidar: ^3.5.3
   fs-extra: ^10.0.1
   js-yaml: ^4.1.0
+  klaw: ^4.0.1
   lodash-es: ^4.17.21
   ts-node: ^10.7.0
   tsconfig-paths: ^3.14.1
@@ -23,6 +25,7 @@ dependencies:
   chokidar: 3.5.3
   fs-extra: 10.0.1
   js-yaml: 4.1.0
+  klaw: 4.0.1
   lodash-es: 4.17.21
   winston: 3.7.2
   winston-daily-rotate-file: 4.6.1_winston@3.7.2
@@ -31,6 +34,7 @@ dependencies:
 devDependencies:
   '@types/fs-extra': 9.0.13
   '@types/js-yaml': 4.0.5
+  '@types/klaw': 3.0.3
   '@types/lodash-es': 4.17.6
   '@types/node': 17.0.23
   '@zerollup/ts-transform-paths': 1.7.18_typescript@4.6.3
@@ -95,6 +99,12 @@ packages:
 
   /@types/json5/0.0.29:
     resolution: {integrity: sha1-7ihweulOEdK4J7y+UnC86n8+ce4=}
+    dev: true
+
+  /@types/klaw/3.0.3:
+    resolution: {integrity: sha512-mXlRDFbTLpVysvxahXUQav0hFctgu3Fqr2xmSrpf/ptO/FwOp7SFEGsJkEihwshMbof3/BIiVJ/o42cuOOuv6g==}
+    dependencies:
+      '@types/node': 17.0.23
     dev: true
 
   /@types/lodash-es/4.17.6:
@@ -358,6 +368,11 @@ packages:
       universalify: 2.0.0
     optionalDependencies:
       graceful-fs: 4.2.10
+    dev: false
+
+  /klaw/4.0.1:
+    resolution: {integrity: sha512-pgsE40/SvC7st04AHiISNewaIMUbY5V/K8b21ekiPiFoYs/EYSdsGa+FJArB1d441uq4Q8zZyIxvAzkGNlBdRw==}
+    engines: {node: '>=14.14.0'}
     dev: false
 
   /kuler/2.0.0:

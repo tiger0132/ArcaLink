@@ -54,3 +54,4 @@ function createLogger(logPath: string, rotate: boolean = true) {
 }
 
 global['logger'] = createLogger(config.data.log.common);
+global['adminLogger'] = createLogger(config.data.log.admin);
