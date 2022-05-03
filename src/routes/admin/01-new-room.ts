@@ -1,41 +1,42 @@
 import { Player } from '@/entities/player';
 import { Room } from '@/entities/room';
-import { formatPack, parsePack } from '@/lib/utils';
+import { p } from '@/lib/packer';
 
 import type { AdminHandler } from '.';
 
 export const name = '01-new-room';
 export const prefix = Buffer.from('013201', 'hex');
 
-const schemaIn = [
-  ['nonce', 8],
-  ['name', 16],
-  ['userId', 'u32'],
-  ['songMap', state.common.songMapLen],
-] as const;
+const schemaBody = p().struct([
+  p('prefix').buf(3, prefix),
+  p('nonce').buf(8),
+  p('name').buf(16),
+  p('userId').u32(),
+  p('songMap').buf(state.common.songMapLen),
+]);
 
-const schemaOut = [
-  ['nonce', 8],
-  ['roomCode', 'str6'],
-  ['roomId', 8],
-  ['token', 8],
-  ['key', 16],
-  ['playerId', 'u32'],
-  ['userId', 'u32'],
-  ['orderedAllowedSongs', state.common.songMapLen],
-] as const;
-
-console.log(state.common.songMapLen);
+const schemaResp = p().struct([
+  p('nonce').buf(8),
+  p('roomCode').str(6),
+  p('roomId').buf(8),
+  p('token').buf(8),
+  p('key').buf(16),
+  p('playerId').u32(),
+  p('userId').u32(),
+  p('orderedAllowedSongs').buf(state.common.songMapLen),
+]);
 
 export const handler: AdminHandler = (msg, remote, { server }) => {
-  let { nonce, name, userId, songMap } = parsePack(schemaIn, msg.body);
+  let [{ nonce, name, userId, songMap }] = schemaBody.parse(msg.body);
 
   let room = new Room();
-  let player = new Player(room, name, userId, room.id, songMap);
+  // let player = new Player(room, name, userId, room.id, songMap);
+  let player = new Player(room, name, userId, null, songMap);
   room.players = [player];
+  room.host = player;
   room.updateSongMap();
 
-  let pack = formatPack(schemaOut, {
+  let pack = schemaResp.format({
     nonce,
     roomCode: room.code,
     roomId: room.id,
@@ -45,5 +46,6 @@ export const handler: AdminHandler = (msg, remote, { server }) => {
     userId: player.userId,
     orderedAllowedSongs: room.songMap,
   });
+  console.log(pack);
   server.send(pack, remote.port, remote.address);
 };

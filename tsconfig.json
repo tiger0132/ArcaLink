@@ -15,7 +15,6 @@
 		],
 		"preserveConstEnums": true,
 		"incremental": true,
-		"declaration": true,
 		"sourceMap": true,
 		"importHelpers": true,
 		"strict": true,

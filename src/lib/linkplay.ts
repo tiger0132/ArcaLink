@@ -1,16 +1,46 @@
-export enum MultiplayerSongProgressStage {
-  Unknown1 = 1,
-  
-  // 2, 3, 4 为准备中相关
-  Unknown2 = 2,
-  Unknown3 = 3,
-  Unknown4 = 4,
-  
-  Unknown5 = 5,
-  Unknown6 = 6,
+export enum PlayerState {
+  Choosing = 1, // 选歌
 
-  Unknown7 = 7,
-  
-  // 8 猜测为结算
-  Unknown8 = 8,
+  Downloading = 2, // 正在下载
+  NotReady = 3, // 在准备界面，自己没准备好
+  Ready = 4, // 自己准备好了
+
+  Syncing = 5, // 进入游戏，但是在显示技能前
+  Desynced = 6, // 疑似在 Syncing 阶段超过 1.5s 出现
+
+  Playing = 7, // 正在游玩
+  GameEnd = 8, // 结算或者关门
 };
+
+export enum RoomState {
+  Locked = 1, // 锁定，在刚创建或者有人加入时短暂进入此状态
+  Choosing = 2, // 选歌
+
+  NotReady = 3, // 在准备界面，有人没准备好
+  Countdown = 4, // 在准备界面，所有人都准备好了，进入倒计时
+
+  // 似乎是同步时出现的，但是不知道具体含义
+  Unknown5 = 5, // 要我猜的话，5 应该是同步延迟
+  Unknown6 = 6, // 6 应该是倒计时
+
+  Playing = 7, // 正在游玩
+  GameEnd = 8, // 结算
+  // 所有人要么离开要么关门也会进入状态 8
+};
+
+export enum Difficulty {
+  Past,
+  Present,
+  Future,
+  Beyond,
+};
+
+export enum ClearType { // 与正常 ClearType 不同，0 代表不存在
+  None = 0,
+  TrackLost = 1,
+  NormalComplete = 2,
+  FullCombo = 3,
+  PureMemory = 4,
+  EasyClear = 5,
+  HardClear = 6,
+}

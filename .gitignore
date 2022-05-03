@@ -23,6 +23,7 @@ node_modules/
 dist/
 
 .vscode
+client/
 data/
 src/config.ts
 docs/

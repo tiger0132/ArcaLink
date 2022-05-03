@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import microtime from 'microtime';
 
 export function decryptPack(data: Buffer, key: Buffer) {
   let iv = data.slice(8, 20);
@@ -12,20 +13,22 @@ export function decryptPack(data: Buffer, key: Buffer) {
   // remove PKCS7 padding
   let pad = decrypted[decrypted.length - 1];
   if (pad > 16) throw new Error('invalid padding');
-  return decrypted.slice(0, -pad);
+  return pad ? decrypted.slice(0, -pad) : decrypted;
 }
 
 export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
-  let iv = crypto.randomBytes(16);
+  let iv = crypto.randomBytes(12);
+
+  // PKCS7 padding
+  let pad = 16 - (body.length % 16);
+  let padded = Buffer.concat([body, Buffer.alloc(pad, pad)]);
 
   let cipher = crypto.createCipheriv('aes-128-gcm', key, iv, { authTagLength: 12 });
   cipher.setAutoPadding(false);
-  let encrypted = cipher.update(body);
+  let encrypted = cipher.update(padded);
   let final = cipher.final();
   let authTag = cipher.getAuthTag();
   return Buffer.concat([token, iv, authTag, encrypted, final]);
-
-  // TODO: PKCS7 padding
 }
 
 export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean, boolean]>) {
@@ -55,85 +58,7 @@ export function stringifyBuf(buf: Buffer) {
 
 export function buf2U64String(buf: Buffer) { return buf.readBigUInt64LE().toString(); }
 
-export type FieldMap = {
-  i8: number; u8: number;
-  i16: number; u16: number;
-  i32: number; u32: number;
-  i64: bigint; u64: bigint;
-};
-export type FieldType = keyof FieldMap | number | `str${number}`;
-export type PackSchema = ReadonlyArray<Readonly<[string, FieldType]>>;
-export type ParsedType<T> =
-  T extends keyof FieldMap ? FieldMap[T] :
-  T extends `str${number}` ? string :
-  Buffer;
-export type ParsedPack<T extends PackSchema> =
-  T['length'] extends number ?
-  T extends [] ?
-  {} :
-  T extends readonly [infer T, ...infer U] ?
-  T extends PackSchema[number] ?
-  U extends PackSchema ?
-  { [k in T[0]]: ParsedType<T[1]> } & ParsedPack<U> :
-  never : never : never : never;
-
-function getSize(size: FieldType): number {
-  if (typeof size === 'number') return size;
-  switch (size) {
-    case 'i8': case 'u8': return 1;
-    case 'i16': case 'u16': return 2;
-    case 'i32': case 'u32': return 4;
-    case 'i64': case 'u64': return 8;
-    default: return parseInt(size.slice(3), 10);
-  }
-}
-
-export function parsePack<T extends PackSchema>(schema: T, pack: Buffer): ParsedPack<T> {
-  let result = {} as any, offset = 0;
-  for (let i of schema) {
-    let v;
-    if (typeof i[1] === 'number')
-      v = pack.slice(offset, offset + i[1]);
-    else
-      switch (i[1]) {
-        case 'i8': v = pack.readInt8(offset); break;
-        case 'u8': v = pack.readUInt8(offset); break;
-        case 'i16': v = pack.readInt16LE(offset); break;
-        case 'u16': v = pack.readUInt16LE(offset); break;
-        case 'i32': v = pack.readInt32LE(offset); break;
-        case 'u32': v = pack.readUInt32LE(offset); break;
-        case 'i64': v = pack.readBigInt64LE(offset); break;
-        case 'u64': v = pack.readBigUInt64LE(offset); break;
-        default: v = pack.slice(offset, offset + getSize(i[1])).toString();
-      }
-    result[i[0]] = v;
-    offset += getSize(i[1]);
-  }
-  if (offset !== pack.length) throw new Error(`invalid pack size: ${offset} != ${pack.length}`);
-  return result;
-}
-
-export function formatPack<T extends PackSchema>(schema: T, data: ParsedPack<T>): Buffer {
-  let result = Buffer.alloc(schema.reduce((a, b) => a + getSize(b[1]), 0));
-  let offset = 0;
-  for (let i of schema) {
-    let v = (data as any)[i[0]];
-    if (typeof i[1] === 'number') 
-			(v as Buffer).copy(result, offset, 0, i[1]);
-    else
-      switch (i[1]) {
-        case 'i8': result.writeInt8(v, offset); break;
-        case 'u8': result.writeUInt8(v, offset); break;
-        case 'i16': result.writeInt16LE(v, offset); break;
-        case 'u16': result.writeUInt16LE(v, offset); break;
-        case 'i32': result.writeInt32LE(v, offset); break;
-        case 'u32': result.writeUInt32LE(v, offset); break;
-        case 'i64': case 'u64': throw new Error('64-bit integer not supported');
-        // case 'i64': result.writeBigInt64LE(v, offset); break;
-        // case 'u64': result.writeBigUInt64LE(v, offset); break;
-        default: result.write(v as string, offset, getSize(i[1]));
-      }
-    offset += getSize(i[1]);
-  }
-  return result;
+export const hrtime = () => {
+  let [sec, msec] = microtime.nowStruct();
+  return BigInt(sec) * 1000000n + BigInt(msec);
 }

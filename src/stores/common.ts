@@ -8,6 +8,8 @@ export const schema = z.object({
   countdown: z.number().default(3999), // 启动曲目的倒计时
   playerTimeout: z.number().default(60e3), // 玩家多少 ms 没有心跳就自动断连
   songMapLen: z.number().default(512), // orderedAllowedSongs 长度
+
+  debugLevel: z.enum(['less', 'full']).default('full'), // stringify 时的输出量
 });
 
 declare global {
