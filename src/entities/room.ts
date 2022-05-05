@@ -1,7 +1,8 @@
-import { defaultPlayerWithName, defaultScore, Player, PlayerInfoWithName, PlayerScore, playerScoreSchema } from './player';
-import { buf2U64String, hrtime } from '@/lib/utils';
-import { RoomState } from '@/lib/linkplay';
+import { Player } from './player';
+import { getEncryptedSize, hrtime } from '@/lib/utils';
+import { defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, RoomInfo, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
 import { p, Tuple, typeOf } from '@/lib/packer';
+import { format as format15 } from '@/routes/player/responses/15-full-roominfo';
 
 export class Room {
   id: Buffer;
@@ -18,7 +19,11 @@ export class Room {
   lastSong: number = -1;
   roundRobin: boolean = false;
 
-  get idString() { return buf2U64String(this.id); }
+  #commandQueue: Buffer[] = [];
+  #totalQueueSize: number = 0;
+
+  get idU64() { return this.id.readBigUInt64LE(); }
+
   constructor() {
     this.id = manager.randomID();
     this.code = manager.randomCode();
@@ -26,7 +31,7 @@ export class Room {
     this.songMap = Buffer.alloc(state.common.songMapLen);
 
     manager.roomCodeMap.set(this.code, this);
-    manager.roomIdMap.set(this.idString, this);
+    manager.roomIdMap.set(this.idU64, this);
   }
   updateSongMap() {
     this.songMap.fill(0xFF);
@@ -35,12 +40,44 @@ export class Room {
         this.songMap[i] &= p.songMap[i];
     });
   }
+  removePlayer(player: Player) {
+    let idx = this.players.indexOf(player);
+    if (idx === -1) throw new Error('player not found');
+
+    player.destroy();
+    this.players.splice(idx, 1);
+    this.updateSongMap();
+  }
   destroy() {
     manager.roomCodeMap.delete(this.code);
-    manager.roomIdMap.delete(this.idString);
+    manager.roomIdMap.delete(this.idU64);
 
     this.players.forEach(p => p.destroy());
+    this.players = [];
+
+    logger.info('Room destroyed: ' + this.code);
   }
+
+  // 补包相关
+  pushPack(pack: Buffer) {
+    this.#commandQueue.push(pack);
+    this.#totalQueueSize += getEncryptedSize(pack.length);
+    while (this.#totalQueueSize > state.common.packResendSizeLimit) {
+      let pack = this.#commandQueue.shift()!;
+      this.#totalQueueSize -= getEncryptedSize(pack.length);
+    }
+  }
+  getResendPacks(counter: number) {
+    let num = this.counter - counter;
+    if (num > this.#commandQueue.length)
+      return [format15(this)];
+    else if (num <= 0)
+      return []; // 怎么会事呢？
+    else
+      return this.#commandQueue.slice(-num);
+  }
+
+  // 获取房间信息相关
   getPlayersInfoWithName() {
     let playersInfo = [defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName] as Tuple<PlayerInfoWithName, 4>;
     this.players.slice(0, 4).forEach((p, i) => playersInfo[i] = p.getPlayerInfoWithName());
@@ -58,7 +95,7 @@ export class Room {
       serverTime: hrtime(),
       songIdx: this.songIdx,
       'interval?': 1000, // from 616
-      'times?': Buffer.from('\x64\x00\x00\x00\x00\x00\x00\x00'), // from 616
+      'times?': Buffer.from('\x64\x00\x00\x00\x00\x00\x00'), // from 616
 
       lastScores: this.getLastScores(),
       lastSong: this.lastSong,
@@ -73,23 +110,3 @@ export class Room {
     };
   }
 };
-
-export const roomInfoSchema = p('roomInfo').struct([
-  p('state').u8(),
-  p('countdown').i32(),
-  p('serverTime').u64(),
-  p('songIdx').i16(),
-  p('interval?').u16(),
-  p('times?').buf(7),
-
-  p('lastScores').array(4, playerScoreSchema),
-  p('lastSong').i16(),
-  p('roundRobin').u8(),
-]);
-export type RoomInfo = typeOf<typeof roomInfoSchema>;
-
-export const roomInfoWithHostSchema = p('roomInfoWithHost').struct([
-  p('host').u64(),
-  ...roomInfoSchema.fields,
-]);
-export type RoomInfoWithHost = typeOf<typeof roomInfoWithHostSchema>;

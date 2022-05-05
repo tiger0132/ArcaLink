@@ -1,5 +1,5 @@
-import { playerInfoWithNameSchema } from '@/entities/player';
-import { Room, roomInfoWithHostSchema } from '@/entities/room';
+import { playerInfoWithNameSchema, roomInfoWithHostSchema } from '@/lib/linkplay';
+import type { Room } from '@/entities/room';
 import { p } from '@/lib/packer';
 import { stringifyBuf } from '@/lib/utils';
 import util from 'util';
@@ -12,7 +12,7 @@ export const schema = p().struct([
   p('playersInfo').array(4, playerInfoWithNameSchema), // [16, 176)
   p('songMap').buf(state.common.songMapLen),  // [176, 688)
 
-  roomInfoWithHostSchema, // [688, 758)
+  roomInfoWithHostSchema, // [688, 759)
 ]);
 
 export const format = (room: Room) => schema.format({

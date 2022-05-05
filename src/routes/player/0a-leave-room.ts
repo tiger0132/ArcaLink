@@ -3,7 +3,7 @@ import { p } from '@/lib/packer';
 import type { PlayerHandler } from '.';
 
 export const name = '0a-leave-room';
-export const prefix = Buffer.from('06160a09', 'hex');
+export const prefix = Buffer.from('06160a0b', 'hex');
 
 export const schema = p().struct([
   p('prefix').buf(4, prefix),

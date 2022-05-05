@@ -1,3 +1,5 @@
+import { p, typeOf } from './packer';
+
 export enum PlayerState {
   Choosing = 1, // 选歌
 
@@ -13,7 +15,7 @@ export enum PlayerState {
 };
 
 export enum RoomState {
-  Locked = 1, // 锁定，在刚创建或者有人加入时短暂进入此状态
+  Locked = 1, // 在有人 online 为 false 时进入此状态
   Choosing = 2, // 选歌
 
   NotReady = 3, // 在准备界面，有人没准备好
@@ -43,4 +45,79 @@ export enum ClearType { // 与正常 ClearType 不同，0 代表不存在
   PureMemory = 4,
   EasyClear = 5,
   HardClear = 6,
-}
+};
+
+export const playerInfoSchema = p('playerInfo').struct([
+  p('id').u64(),          // [0, 8) Player.id
+  p('char').i8(),         // [8]    default -1
+  p('uncapped').u8(),     // [9]
+  p('difficulty').i8(),   // [10]
+  p('score').u32(),       // [11, 15)
+  p('timer?').u32(),      // [15, 19)
+  p('clearType').u8(),    // [19]
+  p('state').u8(),        // [20] getPlayerState = min(state, 4)
+  p('downloadProg').u8(), // [21]
+]);
+export type PlayerInfo = typeOf<typeof playerInfoSchema>;
+export const defaultPlayer: PlayerInfo = {
+  id: 0n,
+  char: -1,
+  uncapped: 0,
+  difficulty: -1,
+  score: 0,
+  'timer?': 0,
+  clearType: 0,
+  state: 1,
+  downloadProg: 0,
+} as const;
+
+export const playerInfoWithNameSchema = p('playerInfoWithName').struct([
+  ...playerInfoSchema.fields,
+  p('online').u8(),  // [22]
+  p().u8(0),         // [23] padding
+  p('name').buf(16), // [24, 40) Player.name
+]);
+export type PlayerInfoWithName = typeOf<typeof playerInfoWithNameSchema>;
+export const defaultPlayerWithName: PlayerInfoWithName = {
+  ...defaultPlayer,
+  online: 0,
+  name: Buffer.from('EmptyPlayer\x00\x00\x00\x00\x00'),
+} as const;
+
+export const playerScoreSchema = p().struct([
+  p('char').i8(),         // [0]
+  p('difficulty').i8(),   // [1]
+  p('score').u32(),       // [2, 6)
+  p('clearType').u8(),    // [6]
+  p('persenalBest').u8(), // [7]
+  p('top').u8(),          // [8]
+]);
+export type PlayerScore = typeOf<typeof playerScoreSchema>;
+export const defaultScore: PlayerScore = {
+  char: -1,
+  difficulty: -1,
+  score: 0,
+  clearType: 0,
+  persenalBest: 0,
+  top: 0,
+} as const;
+
+export const roomInfoSchema = p('roomInfo').struct([
+  p('state').u8(),
+  p('countdown').i32(),
+  p('serverTime').u64(),
+  p('songIdx').i16(),
+  p('interval?').u16(),
+  p('times?').buf(7),
+
+  p('lastScores').array(4, playerScoreSchema),
+  p('lastSong').i16(),
+  p('roundRobin').u8(),
+]);
+export type RoomInfo = typeOf<typeof roomInfoSchema>;
+
+export const roomInfoWithHostSchema = p('roomInfoWithHost').struct([
+  p('host').u64(),
+  ...roomInfoSchema.fields,
+]);
+export type RoomInfoWithHost = typeOf<typeof roomInfoWithHostSchema>;

@@ -1,5 +1,6 @@
-import dgram from 'dgram';
-import { stringifyBuf, toHex } from './utils';
+import { Player } from '@/entities/player';
+import dgram, { RemoteInfo } from 'dgram';
+import { encryptPack, stringifyBuf, toHex } from './utils';
 
 export const defaultMiddleware = (msg: Buffer) => ({ body: msg });
 export class Server<
@@ -11,7 +12,7 @@ export class Server<
   constructor(
     private name: string,
     private prefixSize: number,
-    private middleware: (msg: Buffer) => T | null,
+    private middleware: (msg: Buffer, remote: RemoteInfo) => T | null,
     private end: (result: U, remote: dgram.RemoteInfo, server: Server<T, U>) => void,
   ) {
     this.routeMap = new Map();
@@ -26,7 +27,7 @@ export class Server<
   }
   #messageHandler(msg: Buffer, remote: dgram.RemoteInfo) {
     try {
-      let parsedMsg = this.middleware(msg);
+      let parsedMsg = this.middleware(msg, remote);
       if (!parsedMsg) {
         logger.debug(`[${this.name}] unknown message from ` + remote.address + ':' + remote.port + ' - ' + stringifyBuf(msg));
         return;
@@ -54,6 +55,17 @@ export class Server<
     });
     this.server.on('message', this.#messageHandler.bind(this));
     this.server.bind(port);
+  }
+  send(msg: Buffer, remote: dgram.RemoteInfo): void;
+  send(msg: Buffer, player: Player): void;
+  send(msg: Buffer, remote: dgram.RemoteInfo | Player) {
+    if (remote instanceof Player) {
+      if (!remote.remote)
+        throw new Error('Player is not connected');
+      logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
+      this.server.send(encryptPack(remote.token, msg, remote.key), remote.remote.port, remote.remote.address);
+    } else
+      this.server.send(msg, remote.port, remote.address);
   }
 };
 

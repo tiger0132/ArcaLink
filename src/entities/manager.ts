@@ -2,12 +2,12 @@ import crypto from 'crypto';
 
 import { Room } from './room';
 import { Player } from './player';
-import { buf2U64String } from '@/lib/utils';
 
 export class LinkPlayManager {
   roomCodeMap: Map<string, Room> = new Map();
-  roomIdMap: Map<string, Room> = new Map(); // stringify it as number first
-  playerTokenMap: Map<string, Player> = new Map(); // stringify it as number first
+  roomIdMap: Map<bigint, Room> = new Map();
+  playerTokenMap: Map<bigint, Player> = new Map();
+  playerUidMap: Map<number, Player> = new Map();
 
   randomCode() {
     let id: string;
@@ -16,12 +16,12 @@ export class LinkPlayManager {
   }
   randomID() {
     let id: Buffer;
-    while (this.roomIdMap.has(buf2U64String(id = crypto.randomBytes(8))));
+    while (this.roomIdMap.has((id = crypto.randomBytes(8)).readBigUInt64LE()));
     return id;
   }
   randomToken() {
     let id: Buffer;
-    while (this.playerTokenMap.has(buf2U64String(id = crypto.randomBytes(8))));
+    while (this.playerTokenMap.has((id = crypto.randomBytes(8)).readBigUInt64LE()));
     return id;
   }
 }

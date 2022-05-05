@@ -1,17 +1,22 @@
-import { encryptPack } from '@/lib/utils';
+import { encryptPack, hrtime } from '@/lib/utils';
 import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
-import { format } from './responses/0c-ping';
+import { format as format0c } from './responses/0c-ping';
+import { schema as schema15, format as format15 } from './responses/15-full-roominfo';
+import { format as format13 } from './responses/13-part-roominfo';
+import { format as format12 } from './responses/12-player-update';
+import { RoomState } from '@/lib/linkplay';
+import { inspect } from 'util';
 
 export const name = '09-ping';
-export const prefix = Buffer.from('06160909', 'hex');
+export const prefix = Buffer.from('0616090b', 'hex');
 
 export const schema = p().struct([
   p('prefix').buf(4, prefix),
 
-  p('token').buf(8),      // [4 , 12) Player.token
-  p('counter').u32(),     // [12, 16) 看起来像是某种命令计数一样的东西，似乎是每一条 S->C 的有效命令都会 +1，可能用于保证顺序
+  p('token').buf(8),      // [4 , 12) token
+  p('counter').u32(),     // [12, 16) 看起来像是某种命令计数一样的东西，似乎是每一条 S->C 的有效命令都会 +1，可能用于保证顺序（upd：看起来是用来补包？）
   p('clientTime').u64(),  // [16, 24) std::chrono::steady_clock::now() / 1000
   p('score').u32(),       // [24, 28) a2 准备时和游玩时为自己在这首歌的分数，否则为 0
   p('songTime').u32(),    // [28, 32) a3 游玩时是曲目时间戳 (ms)，永远是 100ms 的倍数，否则为 0
@@ -25,18 +30,46 @@ export const schema = p().struct([
   p('uncapped').u8(),     // [37]     a9 是否觉醒
 ]);
 
-export const handler: PlayerHandler = ({ body, player }, remote, { server }) => {
+export const handler: PlayerHandler = ({ body, player }, remote, server) => {
   let [data] = schema.parse(body);
+  let { room } = player;
+  let { clientTime } = data;
 
-  let room = player.room;
-  if (data.counter === 0) {
-    // 初次连接
-    room.counter++;
+  // 不理这种怪人
+  if (data.counter > room.counter) return;
+
+  // 补包
+  if (data.counter < room.counter) {
+    for (let pack of room.getResendPacks(data.counter))
+      server.send(pack, player);
+    return;
   }
 
-  let pack = encryptPack(player.token, format(data, room), player.key);
-  server.send(pack, remote.port, remote.address);
+  player.lastPing = hrtime(); // 更新连接时间
+  server.send(format0c(clientTime, room), player); // 首先返回正常 0c 包
+
+  // 初次连接
+  if (player.lastPing === 0n) {
+    let pack12, pack13;
+
+    if (room.players.length > 1) { // 是加入而不是创建
+      room.counter++;
+      room.pushPack(pack12 = format12(null, room, room.players.indexOf(player)));
+    }
+    room.counter++;
+    room.state = RoomState.Choosing;
+    room.pushPack(pack13 = format13(null, room));
+
+    // 广播
+    for (let player of room.players) {
+      if (pack12) server.send(pack12, player);
+      server.send(pack13, player);
+    }
+  }
 };
+
+// 其实为了更好的稳定性，似乎应该在 counter 增加前先发包
+// 但是要改的逻辑挺多的，，而且感觉会很丑，就算了
 
 /*
 default (MultiplayerLobbyLayer::update): 0 0 1 -1 0 -1 29 1

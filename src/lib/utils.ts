@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto, { randomInt } from 'crypto';
 import microtime from 'microtime';
 
 export function decryptPack(data: Buffer, key: Buffer) {
@@ -56,9 +56,10 @@ export function stringifyBuf(buf: Buffer) {
   return `<Buffer ${result}>`;
 }
 
-export function buf2U64String(buf: Buffer) { return buf.readBigUInt64LE().toString(); }
-
 export const hrtime = () => {
   let [sec, msec] = microtime.nowStruct();
   return BigInt(sec) * 1000000n + BigInt(msec);
 }
+
+export const getEncryptedSize = (size: number) => ((size + 15) & 15) + 8 + 12 + 12;
+export const randomUInt = () => BigInt(randomInt(0, 4294967295));

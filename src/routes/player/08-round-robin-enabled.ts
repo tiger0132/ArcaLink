@@ -3,7 +3,7 @@ import { p } from '@/lib/packer';
 import type { PlayerHandler } from '.';
 
 export const name = '08-round-robin-enabled';
-export const prefix = Buffer.from('06160809', 'hex');
+export const prefix = Buffer.from('0616080b', 'hex');
 
 export const schema = p().struct([
   p('prefix').buf(4, prefix),

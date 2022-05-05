@@ -1,5 +1,7 @@
-import { Room, roomInfoWithHostSchema } from '@/entities/room';
+import { Room } from '@/entities/room';
+import { roomInfoWithHostSchema } from '@/lib/linkplay';
 import { p } from '@/lib/packer';
+import { randomUInt } from '@/lib/utils';
 import util from 'util';
 
 export const schema = p().struct([
@@ -12,12 +14,12 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  meta: { clientTime: bigint },
+  clientTime: bigint | null,
   room: Room
 ) => schema.format({
   id: room.id,
   counter: room.counter,
-  clientTime: meta.clientTime,
+  clientTime: clientTime ?? randomUInt(),
 
   roomInfoWithHost: room.getRoomInfoWithHost(),
 });

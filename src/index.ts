@@ -1,9 +1,10 @@
 import './config';
 import './logger';
 import './state';
-import { LinkPlayManager } from './entities/manager';
-import adminServer from './routes/admin';
-import playerServer from './routes/player';
+
+const { LinkPlayManager } = await import('./entities/manager');
+const adminServer = (await import('./routes/admin')).default;
+const playerServer = (await import('./routes/player')).default;
 
 const manager = new LinkPlayManager();
 global['manager'] = manager;

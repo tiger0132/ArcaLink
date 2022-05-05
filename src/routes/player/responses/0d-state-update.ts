@@ -1,3 +1,6 @@
+// 还不知道是啥，感觉也不像什么 state update
+// 会不会其实是错误码啊
+
 import { Room } from '@/entities/room';
 import { p } from '@/lib/packer';
 
@@ -11,13 +14,14 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  meta: { clientTime: bigint },
-  room: Room
+  clientTime: bigint,
+  room: Room,
+  state: number,
 ) => schema.format({
   id: room.id,
   counter: room.counter,
-  clientTime: meta.clientTime,
-  state: room.state
+  clientTime,
+  state,
 });
 
 export const stringify = (data: typeof schema['type']) => [

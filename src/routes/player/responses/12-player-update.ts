@@ -1,6 +1,7 @@
-import { playerInfoSchema } from '@/entities/player';
 import { Room } from '@/entities/room';
+import { playerInfoSchema } from '@/lib/linkplay';
 import { p } from '@/lib/packer';
+import { randomUInt } from '@/lib/utils';
 import util from 'util';
 
 export const schema = p().struct([
@@ -14,13 +15,13 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  meta: { clientTime: bigint },
+  clientTime: bigint | null,
   room: Room,
   playerIndex: number,
 ) => schema.format({
   id: room.id,
   counter: room.counter,
-  clientTime: meta.clientTime,
+  clientTime: clientTime ?? randomUInt(),
 
   playerIndex,
   playerInfo: room.players[playerIndex].getPlayerInfo(),

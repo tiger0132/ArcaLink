@@ -1,7 +1,5 @@
-import { playerInfoWithNameSchema } from '@/entities/player';
 import { Room } from '@/entities/room';
 import { p } from '@/lib/packer';
-import util from 'util';
 
 export const schema = p().struct([
   p('prefix').buf(4, Buffer.from('0616100b', 'hex')),
@@ -13,14 +11,14 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  meta: { clientTime: bigint },
+  clientTime: bigint,
   room: Room
 ) => {
   if (!room.host) throw new Error('room.host is null');
   return schema.format({
     id: room.id,
     counter: room.counter,
-    clientTime: meta.clientTime,
+    clientTime,
 
     host: BigInt(room.host.playerId),
   });

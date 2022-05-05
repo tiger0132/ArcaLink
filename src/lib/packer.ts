@@ -14,6 +14,7 @@ abstract class TypeBaseX<BaseType, InType, Name extends string> {
   format(..._args: InType extends undefined ? [] : [InType]): Buffer { throw new Error('Not implemented'); };
   parse(_buf: Buffer, _offset: number = 0): readonly [BaseType, number] { throw new Error('Not implemented'); };
   structure(): any { throw new Error('Not implemented'); }
+  packSize(): number { throw new Error('Not implemented'); }
   // constructor(public name: string) { }
 }
 type TypeBaseAny = TypeBaseX<unknown, unknown, string>;
@@ -41,6 +42,7 @@ function leafFactory<BaseType>(
       return [(buf[fnRead] as unknown as (_: number) => BaseType)(offset), offset + size] as const;
     }
     structure() { return size; }
+    packSize() { return size; }
   };
 }
 const TypeU8 = leafFactory<number>(1, 'readUInt8', 'writeUInt8');
@@ -74,6 +76,7 @@ class TypeBuffer<
     return [buf.slice(offset, offset + this.size), offset + this.size] as const;
   }
   structure() { return this.size; }
+  packSize() { return this.size; }
 }
 
 class TypeFixedString<
@@ -98,6 +101,7 @@ class TypeFixedString<
     return [buf.slice(offset, offset + this.size).toString('ascii'), offset + this.size] as const;
   }
   structure() { return this.size; }
+  packSize() { return this.size; }
 }
 
 export type Tuple<T, N extends number, A extends any[] = []> = A extends { length: N } ? A : Tuple<T, N, [...A, T]>;
@@ -128,6 +132,7 @@ class TypeFixedArray<
     return [result as unknown as InType, offset] as const;
   }
   structure() { return new Array(this.len).fill(this.field.structure()); }
+  packSize() { return this.len * this.field.packSize(); }
 };
 
 type Values<T extends TypeBaseAny[]> =
@@ -164,6 +169,12 @@ class TypeStruct<
     let result = {} as any;
     for (let x of this.fields)
       result[x.name] = x.structure();
+    return result;
+  }
+  packSize() {
+    let result = 0;
+    for (let x of this.fields)
+      result += x.packSize();
     return result;
   }
 }

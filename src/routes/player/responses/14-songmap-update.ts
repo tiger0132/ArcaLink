@@ -1,6 +1,6 @@
 import { Room } from '@/entities/room';
 import { p } from '@/lib/packer';
-import { stringifyBuf } from '@/lib/utils';
+import { randomUInt, stringifyBuf } from '@/lib/utils';
 
 export const schema = p().struct([
   p('prefix').buf(4, Buffer.from('0616140b', 'hex')),
@@ -12,12 +12,12 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  meta: { clientTime: bigint },
+  clientTime: bigint | null,
   room: Room,
 ) => schema.format({
   id: room.id,
   counter: room.counter,
-  clientTime: meta.clientTime,
+  clientTime: clientTime ?? randomUInt(),
 
   songMap: room.songMap,
 });

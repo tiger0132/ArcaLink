@@ -11,7 +11,7 @@ export interface Config {
   server: {
     playerPort: number;
     adminPort: number;
-    key: Buffer;
+    key: string;
   };
 };
 
@@ -26,7 +26,7 @@ const config: Config = {
   server: {
     playerPort: 8081,
     adminPort: 8082,
-    key: Buffer.alloc(64),
+    key: '',
   },
 };
 

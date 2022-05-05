@@ -3,7 +3,7 @@ import { p } from '@/lib/packer';
 import type { PlayerHandler } from '.';
 
 export const name = '0b-song-suggestion';
-export const prefix = Buffer.from('06160b09', 'hex');
+export const prefix = Buffer.from('06160b0b', 'hex');
 
 export const schema = p().struct([
   p('prefix').buf(4, prefix),
