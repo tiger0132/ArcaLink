@@ -14,7 +14,7 @@ export const schema = p().struct([
   p('enabled').u8(),      // [24]
 ]);
 
-export const handler: PlayerHandler = (msg, remote, { server }) => {
+export const handler: PlayerHandler = (msg, remote, server) => {
   let data = schema.parse(msg.body);
   
   // todo: process data

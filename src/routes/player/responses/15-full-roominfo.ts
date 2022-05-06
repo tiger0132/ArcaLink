@@ -15,15 +15,19 @@ export const schema = p().struct([
   roomInfoWithHostSchema, // [688, 759)
 ]);
 
-export const format = (room: Room) => schema.format({
-  id: room.id,
-  counter: room.counter,
+export const format = (room: Room) => {
+  let pack = schema.format({
+    id: room.id,
+    counter: ++room.counter,
 
-  playersInfo: room.getPlayersInfoWithName(),
-  songMap: room.songMap,
+    playersInfo: room.getPlayersInfoWithName(),
+    songMap: room.songMap,
 
-  roomInfoWithHost: room.getRoomInfoWithHost(),
-});
+    roomInfoWithHost: room.getRoomInfoWithHost(),
+  });
+  room.pushPack(pack);
+  return pack;
+}
 
 export const stringify = (data: typeof schema['type']) => [
   '[15 full-roominfo]',

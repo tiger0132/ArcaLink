@@ -1,5 +1,6 @@
 import { Room } from '@/entities/room';
 import { p } from '@/lib/packer';
+import { randomUInt } from '@/lib/utils';
 
 export const schema = p().struct([
   p('prefix').buf(4, Buffer.from('0616100b', 'hex')),
@@ -11,17 +12,19 @@ export const schema = p().struct([
 ]);
 
 export const format = (
-  clientTime: bigint,
-  room: Room
+  clientTime: bigint | null,
+  room: Room,
 ) => {
   if (!room.host) throw new Error('room.host is null');
-  return schema.format({
+  let pack = schema.format({
     id: room.id,
-    counter: room.counter,
-    clientTime,
+    counter: ++room.counter,
+    clientTime: clientTime ?? randomUInt(),
 
     host: BigInt(room.host.playerId),
   });
+  room.pushPack(pack);
+  return pack;
 };
 
 export const stringify = (data: typeof schema['type']) => [

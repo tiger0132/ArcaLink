@@ -1,8 +1,10 @@
 import { Player } from './player';
 import { getEncryptedSize, hrtime } from '@/lib/utils';
-import { defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, RoomInfo, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
+import { defaultPlayer, defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, RoomInfo, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
 import { p, Tuple, typeOf } from '@/lib/packer';
 import { format as format15 } from '@/routes/player/responses/15-full-roominfo';
+import { format as format12 } from '@/routes/player/responses/12-player-update';
+import { format as format10 } from '@/routes/player/responses/10-host-change';
 
 export class Room {
   id: Buffer;
@@ -45,8 +47,21 @@ export class Room {
     if (idx === -1) throw new Error('player not found');
 
     player.destroy();
-    this.players.splice(idx, 1);
     this.updateSongMap();
+
+    // 广播 12 包
+    let pack12 = format12(null, this, idx, defaultPlayer);
+    for (let p of this.players)
+      manager.udpServer.send(pack12, p);
+
+    this.players.splice(idx, 1);
+    if (!this.players.length) return this.destroy();
+
+    if (player === this.host) {
+      this.host = this.players[0];
+      let pack = format10(null, this);
+      manager.udpServer.send(pack, this.host);
+    }
   }
   destroy() {
     manager.roomCodeMap.delete(this.code);

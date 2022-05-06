@@ -20,6 +20,7 @@ app.use(async (ctx, next) => {
     logger.info(`${ctx.ip} ${ctx.method} ${ctx.url} ${JSON.stringify(ctx.request.body)}`);
     await next();
   } catch (e) {
+    logger.error(e);
     if (typeof e === 'number') {
       ctx.status = 403;
       ctx.body = { success: false, error_code: e };
@@ -40,6 +41,7 @@ const schema = z.object({
   char: z.number(),
   songMap: z.string().length(state.common.songMapLen * 2),
 });
+
 router.post('/multiplayer/room/create', async ctx => {
   let parsed = await schema.safeParseAsync(ctx.request.body);
   if (!parsed.success) throw parsed.error.toString();
@@ -52,10 +54,14 @@ router.post('/multiplayer/room/create', async ctx => {
 
   let room = new Room();
 
+  let player = manager.playerUidMap.get(userId);
+  if (player)
+    player.room.removePlayer(player);
+
   // 官服行为，但是其实 key 想是啥就是啥
   // let player = new Player(room, Buffer.from(name), userId, char, room.id, songMap);
 
-  let player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+  player = new Player(room, Buffer.from(name), userId, char, null, songMap);
   room.players = [player];
   room.host = player;
   room.updateSongMap();
@@ -63,9 +69,80 @@ router.post('/multiplayer/room/create', async ctx => {
   // 根据官服在 counter = 0 时直接补 15 包的行为，推测 counter = 1 的包也是 15（因为足够大）
   // 所以无论如何它不会被发送，于是直接排除在队列之外
   room.counter++;
-  room.counter++; room.pushPack(format11(null, room)); // counter = 2
-  room.counter++; room.pushPack(format13(null, room)); // counter = 3
-  room.counter++; room.pushPack(format14(null, room)); // counter = 4
+  format11(null, room); // counter = 2
+  format13(null, room); // counter = 3
+  format14(null, room); // counter = 4
+
+  ctx.body = {
+    success: true,
+    value: {
+      roomCode: room.code,
+      roomId: room.id.readBigUInt64LE().toString(),
+      token: player.token.readBigUInt64LE().toString(),
+      key: player.key.toString('base64'),
+      playerId: player.playerId.toString(),
+      userId: player.userId,
+      orderedAllowedSongs: room.songMap.toString('base64'),
+    }
+  };
+});
+
+router.post('/multiplayer/room/join/:code', async ctx => {
+  let parsed = await schema.safeParseAsync(ctx.request.body);
+  if (!parsed.success) throw parsed.error.toString();
+
+  let { key, name, userId, char, songMap: _songMap } = parsed.data;
+  if (key !== config.server.key) throw 'invalid key';
+
+  let songMap = Buffer.from(_songMap, 'hex');
+  if (songMap.length !== state.common.songMapLen) throw 'invalid song map';
+
+  let code = ctx.params.code;
+  let room = manager.roomCodeMap.get(code);
+  if (!room) throw 1202;
+  if (room.players.length === 4) throw 1201;
+  if (room.state > RoomState.Choosing) throw 1205; // TODO: 其实不知道 GameEnd state 可不可以，还没试过
+
+  let player = manager.playerUidMap.get(userId);
+  let pack11, pack13, pack14;
+  if (player && player.room === room) {
+    // 这是官服的行为，我觉得非常怪异，，，
+    // 如果加入了自己创建的房间，那么把新的 player 替换到原来的位置，给原来的设备发一个 11 包
+
+    let oldPlayer = player;
+    let idx = room.players.indexOf(oldPlayer);
+    if (idx === -1) throw 'player not found';
+    oldPlayer.destroy();
+
+    player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+    room.players[idx] = player;
+    if (room.host === oldPlayer) room.host = player;
+
+    manager.udpServer.send(pack11 = format11(null, room), oldPlayer);
+  } else {
+    if (player)
+      player.room.removePlayer(player);
+    player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+    room.players.push(player);
+  }
+
+  if (!pack11) pack11 = format11(null, room);
+  if (room.state !== RoomState.Locked) { // 只会在没进入 state 1 的时候发 13 包
+    room.state = RoomState.Locked;
+    pack13 = format13(null, room);
+  }
+
+  let oldSongMap = room.songMap;
+  room.updateSongMap();
+  if (oldSongMap.compare(room.songMap) !== 0) { // songMap 动了就发一个 14 包
+    pack14 = format14(null, room);
+  }
+
+  for (let player of room.players) {
+    manager.udpServer.send(pack11, player);
+    if (pack13) manager.udpServer.send(pack13, player);
+    if (pack14) manager.udpServer.send(pack14, player);
+  }
 
   ctx.body = {
     success: true,

@@ -22,12 +22,11 @@ export class Player {
   downloadProg: number = 0;
   online: boolean = false;
 
-  persenalBest: boolean = false;
+  personalBest: boolean = false;
   top: boolean = false;
 
   lastPing: bigint = 0n;
   remote?: RemoteInfo;
-
 
   get tokenU64() { return this.token.readBigUInt64LE(); }
   static #seq: number = 1;
@@ -55,12 +54,12 @@ export class Player {
     manager.playerUidMap.set(this.userId, this);
   }
 
-  // 不要主动调用这个函数
+  // 不要主动调用这个函数，除非你知道自己在干什么
   destroy() {
     manager.playerTokenMap.delete(this.tokenU64);
     manager.playerUidMap.delete(this.userId);
 
-    logger.debug('Player destroyed: ' + this.userId);
+    logger.debug(`Player destroyed: ${this.playerId} (uid=${this.userId})`);
   }
   getPlayerInfo(): PlayerInfo {
     return {
@@ -78,7 +77,7 @@ export class Player {
   getPlayerInfoWithName(): PlayerInfoWithName {
     return {
       ...this.getPlayerInfo(),
-      online: this.online ? 1 : 1,
+      online: this.online ? 1 : 0,
       name: this.name,
     };
   };
@@ -88,7 +87,7 @@ export class Player {
       difficulty: this.difficulty,
       score: this.score,
       clearType: this.clearType,
-      persenalBest: this.persenalBest ? 1 : 0,
+      persenalBest: this.personalBest ? 1 : 0,
       top: this.top ? 1 : 0,
     };
   }

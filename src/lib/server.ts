@@ -9,18 +9,32 @@ export class Server<
   > {
   private routeMap: Map<string, Route<T, U>['handler']>;
   public server: dgram.Socket;
+  private middleware;
+  private log;
+  private end;
   constructor(
-    private name: string,
+    public name: string,
     private prefixSize: number,
-    private middleware: (msg: Buffer, remote: RemoteInfo) => T | null,
-    private end: (result: U, remote: dgram.RemoteInfo, server: Server<T, U>) => void,
+    {
+      middleware,
+      log,
+      end,
+    }: {
+      middleware: (msg: Buffer, remote: RemoteInfo) => T | null;
+      log: (server: Server<T, U>, parsedMsg: T) => void,
+      end: (result: U, remote: dgram.RemoteInfo, server: Server<T, U>) => void;
+    },
   ) {
     this.routeMap = new Map();
     this.server = dgram.createSocket('udp4');
+
+    this.middleware = middleware;
+    this.log = log;
+    this.end = end;
   }
   register(route: Route<T, U>) {
     if (route.prefix.length === this.prefixSize) {
-      this.routeMap.set(route.prefix.toString('binary'), route.handler);
+      this.routeMap.set(route.prefix.slice(0, -1).toString('binary'), route.handler);
       logger.info(`Register route: "${this.name}/${route.name}" (${toHex(route.prefix)})`);
     } else
       logger.error(`Route: "${route.name}"'s prefix (${toHex(route.prefix)}) length is not ${this.prefixSize}`);
@@ -32,9 +46,10 @@ export class Server<
         logger.debug(`[${this.name}] unknown message from ` + remote.address + ':' + remote.port + ' - ' + stringifyBuf(msg));
         return;
       }
-      logger.debug(`[${this.name}] ` + remote.address + ':' + remote.port + ' - ' + stringifyBuf(parsedMsg.body));
+      this.log(this, parsedMsg);
+      // logger.debug(`[${this.name}] ` + remote.address + ':' + remote.port + ' - ' + stringifyBuf(parsedMsg.body));
 
-      let prefix = parsedMsg.body.slice(0, this.prefixSize).toString('binary');
+      let prefix = parsedMsg.body.slice(0, this.prefixSize).slice(0, -1).toString('binary');
       let route = this.routeMap.get(prefix);
       if (!route) {
         logger.warn(`[${this.name}] Unknown command from ${remote.address}:${remote.port}: ${stringifyBuf(parsedMsg.body)}.`);
@@ -60,8 +75,7 @@ export class Server<
   send(msg: Buffer, player: Player): void;
   send(msg: Buffer, remote: dgram.RemoteInfo | Player) {
     if (remote instanceof Player) {
-      if (!remote.remote)
-        throw new Error('Player is not connected');
+      if (!remote.remote) return;
       logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
       this.server.send(encryptPack(remote.token, msg, remote.key), remote.remote.port, remote.remote.address);
     } else

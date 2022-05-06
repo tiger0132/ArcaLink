@@ -1,6 +1,6 @@
 import { Room } from '@/entities/room';
 import { playerInfoSchema } from '@/lib/linkplay';
-import { p } from '@/lib/packer';
+import { p, typeOf } from '@/lib/packer';
 import { randomUInt } from '@/lib/utils';
 import util from 'util';
 
@@ -18,14 +18,19 @@ export const format = (
   clientTime: bigint | null,
   room: Room,
   playerIndex: number,
-) => schema.format({
-  id: room.id,
-  counter: room.counter,
-  clientTime: clientTime ?? randomUInt(),
+  playerInfo?: typeOf<typeof playerInfoSchema>,
+) => {
+  let pack = schema.format({
+    id: room.id,
+    counter: ++room.counter,
+    clientTime: clientTime ?? randomUInt(),
 
-  playerIndex,
-  playerInfo: room.players[playerIndex].getPlayerInfo(),
-});
+    playerIndex,
+    playerInfo: playerInfo ?? room.players[playerIndex].getPlayerInfo(),
+  });
+  room.pushPack(pack);
+  return pack;
+}
 
 export const stringify = (data: typeof schema['type']) => [
   '[12 player-update]',

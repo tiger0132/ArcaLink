@@ -16,13 +16,17 @@ export const schema = p().struct([
 export const format = (
   clientTime: bigint | null,
   room: Room
-) => schema.format({
-  id: room.id,
-  counter: room.counter,
-  clientTime: clientTime ?? randomUInt(),
+) => {
+  let pack = schema.format({
+    id: room.id,
+    counter: ++room.counter,
+    clientTime: clientTime ?? randomUInt(),
 
-  roomInfoWithHost: room.getRoomInfoWithHost(),
-});
+    roomInfoWithHost: room.getRoomInfoWithHost(),
+  });
+  room.pushPack(pack);
+  return pack;
+}
 
 export const stringify = (data: typeof schema['type']) => [
   '[13 part-roominfo]',

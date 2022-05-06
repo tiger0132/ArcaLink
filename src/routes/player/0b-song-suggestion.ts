@@ -13,6 +13,6 @@ export const schema = p().struct([
   p('songIdx').i16(),     // [16, 18)
 ]);
 
-export const handler: PlayerHandler = (msg, remote, { server }) => {
+export const handler: PlayerHandler = (msg, remote, server) => {
   let data = schema.parse(msg.body);
 };
