@@ -57,6 +57,7 @@ export const playerInfoSchema = p('playerInfo').struct([
   p('clearType').u8(),    // [19]
   p('state').u8(),        // [20] getPlayerState = min(state, 4)
   p('downloadProg').u8(), // [21]
+  p('online').u8(),       // [22]
 ]);
 export type PlayerInfo = typeOf<typeof playerInfoSchema>;
 export const defaultPlayer: PlayerInfo = {
@@ -69,18 +70,17 @@ export const defaultPlayer: PlayerInfo = {
   clearType: 0,
   state: 1,
   downloadProg: 0,
+  online: 0,
 } as const;
 
 export const playerInfoWithNameSchema = p('playerInfoWithName').struct([
   ...playerInfoSchema.fields,
-  p('online').u8(),  // [22]
   p().u8(0),         // [23] padding
   p('name').buf(16), // [24, 40) Player.name
 ]);
 export type PlayerInfoWithName = typeOf<typeof playerInfoWithNameSchema>;
 export const defaultPlayerWithName: PlayerInfoWithName = {
   ...defaultPlayer,
-  online: 0,
   name: Buffer.from('EmptyPlayer\x00\x00\x00\x00\x00'),
 } as const;
 

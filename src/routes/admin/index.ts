@@ -64,7 +64,7 @@ router.post('/multiplayer/room/create', async ctx => {
   player = new Player(room, Buffer.from(name), userId, char, null, songMap);
   room.players = [player];
   room.host = player;
-  room.updateSongMap();
+  room.songMap = songMap;
 
   // 根据官服在 counter = 0 时直接补 15 包的行为，推测 counter = 1 的包也是 15（因为足够大）
   // 所以无论如何它不会被发送，于是直接排除在队列之外
@@ -101,10 +101,10 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let room = manager.roomCodeMap.get(code);
   if (!room) throw 1202;
   if (room.players.length === 4) throw 1201;
-  if (room.state > RoomState.Choosing) throw 1205; // TODO: 其实不知道 GameEnd state 可不可以，还没试过
+  if (room.state > RoomState.Choosing) throw 1205; // FIXME: 其实不知道 GameEnd state 可不可以，还没试过
 
   let player = manager.playerUidMap.get(userId);
-  let pack11, pack13, pack14;
+  let pack11;
   if (player && player.room === room) {
     // 这是官服的行为，我觉得非常怪异，，，
     // 如果加入了自己创建的房间，那么把新的 player 替换到原来的位置，给原来的设备发一个 11 包
@@ -126,23 +126,9 @@ router.post('/multiplayer/room/join/:code', async ctx => {
     room.players.push(player);
   }
 
-  if (!pack11) pack11 = format11(null, room);
-  if (room.state !== RoomState.Locked) { // 只会在没进入 state 1 的时候发 13 包
-    room.state = RoomState.Locked;
-    pack13 = format13(null, room);
-  }
-
-  let oldSongMap = room.songMap;
-  room.updateSongMap();
-  if (oldSongMap.compare(room.songMap) !== 0) { // songMap 动了就发一个 14 包
-    pack14 = format14(null, room);
-  }
-
-  for (let player of room.players) {
-    manager.udpServer.send(pack11, player);
-    if (pack13) manager.udpServer.send(pack13, player);
-    if (pack14) manager.udpServer.send(pack14, player);
-  }
+  room.broadcast(pack11 ?? format11(null, room)); // 发一个 11 包
+  room.state = RoomState.Locked; // 更新状态并发一个 13 包
+  room.updateSongMap(); // 更新 songMap 并发一个 14 包
 
   ctx.body = {
     success: true,

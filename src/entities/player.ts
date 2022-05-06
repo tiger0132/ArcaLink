@@ -25,8 +25,8 @@ export class Player {
   personalBest: boolean = false;
   top: boolean = false;
 
-  lastPing: bigint = 0n;
   remote?: RemoteInfo;
+  #disconnectTimer: NodeJS.Timeout;
 
   get tokenU64() { return this.token.readBigUInt64LE(); }
   static #seq: number = 1;
@@ -50,17 +50,31 @@ export class Player {
     this.key = crypto.randomBytes(16);
     this.songMap = songMap;
 
+    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.playerTimeout);
+
     manager.playerTokenMap.set(this.tokenU64, this);
     manager.playerUidMap.set(this.userId, this);
+  }
+  disconnect() {
+    if (this.online) {
+      this.room.disconnectPlayer(this);
+      this.refreshTimer();
+    } else
+      this.room.removePlayer(this);
+  }
+  refreshTimer() {
+    this.#disconnectTimer.refresh();
   }
 
   // 不要主动调用这个函数，除非你知道自己在干什么
   destroy() {
     manager.playerTokenMap.delete(this.tokenU64);
     manager.playerUidMap.delete(this.userId);
+    clearTimeout(this.#disconnectTimer);
 
     logger.debug(`Player destroyed: ${this.playerId} (uid=${this.userId})`);
   }
+
   getPlayerInfo(): PlayerInfo {
     return {
       id: BigInt(this.playerId),
@@ -72,12 +86,12 @@ export class Player {
       clearType: this.clearType,
       state: this.state,
       downloadProg: this.downloadProg,
+      online: this.online ? 1 : 0,
     };
   }
   getPlayerInfoWithName(): PlayerInfoWithName {
     return {
       ...this.getPlayerInfo(),
-      online: this.online ? 1 : 0,
       name: this.name,
     };
   };

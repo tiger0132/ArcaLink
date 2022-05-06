@@ -40,13 +40,11 @@ export const handler: PlayerHandler = ({ body, player }, remote, server) => {
 
   // 补包
   if (data.counter < room.counter) {
-    console.log('resend', room.counter - data.counter);
     for (let pack of room.getResendPacks(data.counter))
       server.send(pack, player);
     return;
   }
 
-  player.online = true;
   server.send(format0c(clientTime, room), player); // 首先返回正常 0c 包
 
   if (manager.playerTokenMap.get(player.tokenU64) !== player) logger.error('wtf0');
@@ -58,22 +56,17 @@ export const handler: PlayerHandler = ({ body, player }, remote, server) => {
   // if (manager.roomCodeMap.size !== 1) logger.error('wtf6');
   // if (manager.roomIdMap.size !== 1) logger.error('wtf7');
 
-  // 初次连接
-  if (player.lastPing === 0n) {
-    let pack12, pack13;
+  // 初次连接 / 重新连接
+  player.refreshTimer();
+  if (!player.online) {
+    player.online = true;
 
-    if (room.players.length > 1) // 是加入而不是创建
-      pack12 = format12(null, room, room.players.indexOf(player));
-    room.state = RoomState.Choosing; // TODO：如果有死人在里面那还不能设成 state2
-    pack13 = format13(null, room);
-
-    // 广播
-    for (let player of room.players) {
-      if (pack12) server.send(pack12, player);
-      server.send(pack13, player);
-    }
+    if (room.players.length > 1) // 如果是加入，那么发一个 12 包
+      room.broadcast(format12(null, room, room.players.indexOf(player)));
+    if (room.isAllOnline())
+      room.state = RoomState.Choosing;
+    room.broadcast(format13(null, room));
   }
-  player.lastPing = hrtime(); // 更新连接时间
 };
 
 // 其实为了更好的稳定性，似乎应该在 counter 增加前先发包
