@@ -20,7 +20,7 @@ export const format = (
     counter: ++room.counter,
     clientTime: clientTime ?? randomUInt(),
 
-    host: BigInt(room.host.playerId),
+    host: room.host.playerId,
   });
   room.pushPack(pack);
   return pack;

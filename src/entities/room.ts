@@ -14,7 +14,7 @@ export class Room {
   players: Player[];
   songMap: Buffer;
 
-  #state: RoomState = RoomState.Locked;
+  state: RoomState = RoomState.Locked;
   counter: number = 0;
   countdown: number = -1;
   #host: Player | null = null;
@@ -28,24 +28,22 @@ export class Room {
 
   get idU64() { return this.id.readBigUInt64LE(); }
 
-  get state() { return this.#state; };
-  set state(state: RoomState) {
-    if (this.#state === state) return;
-    this.#state = state;
-    this.broadcast(format13(null, this));
+  setState(state: RoomState, clientTime?: bigint) { // 修改并广播 13 包
+    if (this.state === state) return;
+    this.state = state;
+    this.broadcast(format13(clientTime ?? null, this));
   }
 
   get host() {
     if (!this.#host) throw new Error('room.host is null');
     return this.#host;
   }
-  set host(player: Player) {
+  set host(player: Player) { this.#host = player; }
+  setHost(player: Player, clientTime?: bigint) { // 修改并广播 10 包
     if (this.#host === player) return;
     this.#host = player;
-    this.broadcast(format10(null, this));
+    this.broadcast(format10(clientTime ?? null, this));
   }
-  // 修改房主不会广播 10 包，一般请不要这么做
-  _setHost(player: Player) { this.#host = player; }
 
   constructor() {
     this.id = manager.randomID();
@@ -79,11 +77,11 @@ export class Room {
 
     if (player === this.host) {
       let host = this.players.find(p => p.online);
-      if (host) this.host = host;
+      if (host) this.setHost(host);
     }
 
     // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
-    this.state = RoomState.Locked;
+    this.setState(RoomState.Locked);
   }
   removePlayer(player: Player) {
     let idx = this.players.indexOf(player);
@@ -102,10 +100,10 @@ export class Room {
 
     // 更新房主
     if (player === this.host)
-      this.host = this.players.find(p => p.online) ?? this.players[0];
+      this.setHost(this.players.find(p => p.online) ?? this.players[0]);
 
     // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
-    this.state = this.isAllOnline() ? RoomState.Choosing : RoomState.Locked;
+    this.setState(this.isAllOnline() ? RoomState.Choosing : RoomState.Locked);
   }
   destroy() {
     manager.roomCodeMap.delete(this.code);
@@ -170,7 +168,7 @@ export class Room {
   }
   getRoomInfoWithHost(): RoomInfoWithHost {
     return {
-      host: BigInt(this.host.playerId),
+      host: this.host.playerId,
       ...this.getRoomInfo(),
     };
   }

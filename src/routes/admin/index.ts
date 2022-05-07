@@ -63,7 +63,7 @@ router.post('/multiplayer/room/create', async ctx => {
 
   player = new Player(room, Buffer.from(name), userId, char, null, songMap);
   room.players = [player];
-  room._setHost(player);
+  room.host = player;
   room.songMap = songMap;
 
   // 根据官服在 counter = 0 时直接补 15 包的行为，推测 counter = 1 的包也是 15（因为足够大）
@@ -119,7 +119,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
     manager.udpServer.send(pack11 = format11(null, room), oldPlayer);
 
     if (room.host === oldPlayer) {
-      room._setHost(player); // 616 并不会在这里发 10 包，所以我们也不发
+      room.host = player; // 616 并不会在这里发 10 包，所以我们也不发
 
       /*
       在这种情况下，616 所有会广播的包分别是：
@@ -140,7 +140,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   }
 
   room.broadcast(pack11 ?? format11(null, room)); // 发一个 11 包
-  room.state = RoomState.Locked; // 更新状态并发一个 13 包
+  room.setState(RoomState.Locked); // 更新状态并发一个 13 包
   room.updateSongMap(); // 更新 songMap 并发一个 14 包
 
   ctx.body = {

@@ -6,7 +6,7 @@ import { RemoteInfo } from 'dgram';
 
 export class Player {
   name: Buffer;       // buf(16) (string)
-  playerId: number;   // u32
+  playerId: bigint;   // u32
   userId: number;     // u32
   token: Buffer;      // buf(8) (u64)
   key: Buffer;        // buf(16)
@@ -29,7 +29,7 @@ export class Player {
   #disconnectTimer: NodeJS.Timeout;
 
   get tokenU64() { return this.token.readBigUInt64LE(); }
-  static #seq: number = 1;
+  static #seq: bigint = 1n;
 
   constructor(
     public room: Room,
@@ -77,7 +77,7 @@ export class Player {
 
   getPlayerInfo(): PlayerInfo {
     return {
-      id: BigInt(this.playerId),
+      id: this.playerId,
       char: this.char,
       uncapped: this.uncapped ? 1 : 0,
       difficulty: this.difficulty,

@@ -71,12 +71,12 @@ export class Server<
     this.server.on('message', this.#messageHandler.bind(this));
     this.server.bind(port);
   }
-  send(msg: Buffer, remote: dgram.RemoteInfo): void;
-  send(msg: Buffer, player: Player): void;
-  send(msg: Buffer, remote: dgram.RemoteInfo | Player) {
+  send(msg: Buffer, remote: dgram.RemoteInfo, silent?: boolean): void;
+  send(msg: Buffer, player: Player, silent?: boolean): void;
+  send(msg: Buffer, remote: dgram.RemoteInfo | Player, silent: boolean = false) {
     if (remote instanceof Player) {
       if (!remote.remote) return;
-      logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
+      if (!silent) logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
       this.server.send(encryptPack(remote.token, msg, remote.key), remote.remote.port, remote.remote.address);
     } else
       this.server.send(msg, remote.port, remote.address);

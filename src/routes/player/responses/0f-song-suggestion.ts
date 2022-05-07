@@ -18,7 +18,7 @@ export const format = (
 ) => schema.format({
   id: room.id,
   counter: room.counter,
-  playerId: BigInt(player.playerId),
+  playerId: player.playerId,
   songIdxWithDiff /* 内容是 (idx * 4 + diff) */,
 });
 

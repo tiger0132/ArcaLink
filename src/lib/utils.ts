@@ -24,8 +24,11 @@ export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
   let iv = crypto.randomBytes(12);
 
   // PKCS7 padding
-  let pad = 16 - (body.length % 16);
-  let padded = Buffer.concat([body, Buffer.alloc(pad, pad)]);
+  let padded = body;
+  if (body.length % 16 !== 0) { // f u 616
+    let pad = 16 - (body.length % 16);
+    padded = Buffer.concat([body, Buffer.alloc(pad, pad)]);
+  }
 
   let cipher = crypto.createCipheriv('aes-128-gcm', key, iv, { authTagLength: 12 });
   cipher.setAutoPadding(false);

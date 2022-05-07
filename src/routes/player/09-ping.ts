@@ -29,6 +29,8 @@ export const schema = p().struct([
   p('uncapped').u8(),     // [37]     a9 是否觉醒
 ]);
 
+// NOTE: clientTime 字段在 ping 里用的是 steady_clock，但是在别的地方有的用的是 arc4random，但是我懒得区分了
+
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
@@ -44,7 +46,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     return;
   }
 
-  server.send(format0c(clientTime, room), player); // 首先返回正常 0c 包
+  server.send(format0c(clientTime, room), player, true); // 首先返回正常 0c 包
 
   if (manager.playerTokenMap.get(player.tokenU64) !== player) logger.error('wtf0');
   if (manager.playerUidMap.get(player.userId) !== player) logger.error('wtf1');
@@ -63,7 +65,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     if (room.players.length > 1) // 如果是加入，那么发一个 12 包
       room.broadcast(format12(null, room, room.players.indexOf(player)));
     if (room.isAllOnline())
-      room.state = RoomState.Choosing;
+      room.setState(RoomState.Choosing);
     room.broadcast(format13(null, room));
   }
 };
