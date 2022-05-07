@@ -33,6 +33,10 @@ export class Room {
     this.state = state;
     this.broadcast(format13(clientTime ?? null, this));
   }
+  setRoundRobin(roundRobin: boolean, clientTime?: bigint) { // 其实只有那一个地方会设置 roundrobin，纯粹就是为了统一
+    this.roundRobin = roundRobin;
+    this.broadcast(format13(clientTime ?? null, this));
+  }
 
   get host() {
     if (!this.#host) throw new Error('room.host is null');

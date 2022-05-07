@@ -1,6 +1,7 @@
 import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
+import { format as format0d, InGameError } from './responses/0d-send-error';
 
 export const name = '08-round-robin-enabled';
 export const prefix = Buffer.from('0616080b', 'hex');
@@ -14,8 +15,12 @@ export const schema = p().struct([
   p('enabled').u8(),      // [24]
 ]);
 
-export const handler: PlayerHandler = (msg, server) => {
-  let data = schema.parse(msg.body);
-  
-  // todo: process data
+export const handler: PlayerHandler = ({ body, player }, server) => {
+  let [data] = schema.parse(body);
+  let { room } = player;
+  let { clientTime, enabled } = data;
+  if (room.host !== player)
+    return server.send(format0d(clientTime, room, InGameError.NotHost), player);
+
+  room.setRoundRobin(Boolean(enabled), clientTime);
 };
