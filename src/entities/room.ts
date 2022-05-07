@@ -54,15 +54,15 @@ export class Room {
     manager.roomCodeMap.set(this.code, this);
     manager.roomIdMap.set(this.idU64, this);
   }
-  updateSongMap() {
+  updateSongMap(clientTime?: bigint, force?: true) {
     let oldSongMap = this.songMap;
     this.songMap.fill(0xFF);
     this.players.forEach(p => {
       for (let i = 0; i < state.common.songMapLen; i++)
         this.songMap[i] &= p.songMap[i];
     });
-    if (!oldSongMap.equals(this.songMap))
-      this.broadcast(format14(null, this));
+    if (force || !oldSongMap.equals(this.songMap))
+      this.broadcast(format14(clientTime ?? null, this));
   }
   isAllOnline() {
     return this.players.every(p => p.online);
