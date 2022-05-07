@@ -18,7 +18,7 @@ export const schema = p().struct([
 export const format = (room: Room) => {
   let pack = schema.format({
     id: room.id,
-    counter: ++room.counter,
+    counter: room.counter,
 
     playersInfo: room.getPlayersInfoWithName(),
     songMap: room.songMap,
