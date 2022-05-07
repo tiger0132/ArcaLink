@@ -31,6 +31,7 @@ export enum RoomState {
 };
 
 export enum Difficulty {
+  None = -1,
   Past,
   Present,
   Future,

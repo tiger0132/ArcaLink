@@ -63,7 +63,7 @@ router.post('/multiplayer/room/create', async ctx => {
 
   player = new Player(room, Buffer.from(name), userId, char, null, songMap);
   room.players = [player];
-  room.host = player;
+  room._setHost(player);
   room.songMap = songMap;
 
   // 根据官服在 counter = 0 时直接补 15 包的行为，推测 counter = 1 的包也是 15（因为足够大）
@@ -116,9 +116,22 @@ router.post('/multiplayer/room/join/:code', async ctx => {
 
     player = new Player(room, Buffer.from(name), userId, char, null, songMap);
     room.players[idx] = player;
-    if (room.host === oldPlayer) room.host = player;
-
     manager.udpServer.send(pack11 = format11(null, room), oldPlayer);
+
+    if (room.host === oldPlayer) {
+      room._setHost(player); // 616 并不会在这里发 10 包，所以我们也不发
+
+      /*
+      在这种情况下，616 所有会广播的包分别是：
+      - 一个 11 包，内容是更新了的 players 列表
+      - 一个 13 包，内容是把 state 变成 1，host 变成替换了的新 player 的新 roominfo
+      - 【一个啥都不改的 13 包】
+      - 如果更新了 songMap，发一个 14 包
+
+      不太懂为啥 616 那里会有一个冗余包，我只能猜测是 616 是手动发的 13 包，而不是在 state 更新时自动处理
+      我觉得这个行为很蠢，就不抄了
+      */
+    }
   } else {
     if (player)
       player.room.removePlayer(player);

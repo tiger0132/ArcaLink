@@ -1,6 +1,7 @@
 import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
+import { format as format0f } from './responses/0f-song-suggestion';
 
 export const name = '0b-song-suggestion';
 export const prefix = Buffer.from('06160b0b', 'hex');
@@ -10,9 +11,16 @@ export const schema = p().struct([
 
   p('token').buf(8),      // [4 , 12)
   p('counter').u32(),     // [12, 16)
-  p('songIdx').i16(),     // [16, 18)
+  p('songIdxWithDiff').i16(),     // [16, 18)
 ]);
 
-export const handler: PlayerHandler = (msg, remote, server) => {
-  let data = schema.parse(msg.body);
+export const handler: PlayerHandler = ({body, player }, server) => {
+  let [data] = schema.parse(body);
+  let { room } = player;
+  let { songIdxWithDiff } = data;
+
+  let pack0f = format0f(room, player, songIdxWithDiff);
+  for (let p of room.players)
+    if (p.online && p !== player)
+      server.send(pack0f, p);
 };

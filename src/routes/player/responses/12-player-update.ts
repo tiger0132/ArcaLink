@@ -11,7 +11,7 @@ export const schema = p().struct([
   p('clientTime').u64(), // [16, 24) std::chrono::steady_clock::now() / 1000
 
   p('playerIndex').u8(), // [24]
-  playerInfoSchema,      // [25, 47)
+  playerInfoSchema,      // [25, 48)
 ]);
 
 export const format = (

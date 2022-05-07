@@ -12,6 +12,6 @@ export const schema = p().struct([
   p('counter').u32(),     // [12, 16)
 ]);
 
-export const handler: PlayerHandler = ({ player }, _remote, _server) => {
+export const handler: PlayerHandler = ({ player }) => {
   player.room.removePlayer(player);
 };

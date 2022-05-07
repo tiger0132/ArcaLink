@@ -14,7 +14,7 @@ export class Player {
 
   char: number = -1;
   uncapped: boolean = false;
-  difficulty: Difficulty | -1 = -1;
+  difficulty: Difficulty = Difficulty.None;
   score: number = 0;
   'timer?': number = 0;
   clearType: ClearType = ClearType.None;

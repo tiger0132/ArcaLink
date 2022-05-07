@@ -55,7 +55,7 @@ export class Server<
         logger.warn(`[${this.name}] Unknown command from ${remote.address}:${remote.port}: ${stringifyBuf(parsedMsg.body)}.`);
         return;
       }
-      let result = route(parsedMsg, remote, this);
+      let result = route(parsedMsg, this);
       this.end(result, remote, this);
     } catch (e) {
       logger.error(e + '');
@@ -89,7 +89,7 @@ export interface Route<
   > {
   name: string;
   prefix: Buffer;
-  handler: (msg: T, remote: dgram.RemoteInfo, server: Server<T, U>) => U;
+  handler: (msg: T, server: Server<T, U>) => U;
 }
 
 export type ServerRoute<S> = S extends Server<infer T, infer U> ? Route<T, U> : never;

@@ -3,7 +3,6 @@ import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
 import { format as format0c } from './responses/0c-ping';
-import { schema as schema15, format as format15 } from './responses/15-full-roominfo';
 import { format as format13 } from './responses/13-part-roominfo';
 import { format as format12 } from './responses/12-player-update';
 import { RoomState } from '@/lib/linkplay';
@@ -30,7 +29,7 @@ export const schema = p().struct([
   p('uncapped').u8(),     // [37]     a9 是否觉醒
 ]);
 
-export const handler: PlayerHandler = ({ body, player }, remote, server) => {
+export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { clientTime } = data;

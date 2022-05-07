@@ -17,7 +17,7 @@ export class Room {
   #state: RoomState = RoomState.Locked;
   counter: number = 0;
   countdown: number = -1;
-  host: Player | null = null;
+  #host: Player | null = null;
 
   songIdx: number = -1;
   lastSong: number = -1;
@@ -34,6 +34,18 @@ export class Room {
     this.#state = state;
     this.broadcast(format13(null, this));
   }
+
+  get host() {
+    if (!this.#host) throw new Error('room.host is null');
+    return this.#host;
+  }
+  set host(player: Player) {
+    if (this.#host === player) return;
+    this.#host = player;
+    this.broadcast(format10(null, this));
+  }
+  // 修改房主不会广播 10 包，一般请不要这么做
+  _setHost(player: Player) { this.#host = player; }
 
   constructor() {
     this.id = manager.randomID();
@@ -67,10 +79,7 @@ export class Room {
 
     if (player === this.host) {
       let host = this.players.find(p => p.online);
-      if (host) {
-        this.host = host;
-        this.broadcast(format10(null, this));
-      }
+      if (host) this.host = host;
     }
 
     // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
@@ -92,10 +101,8 @@ export class Room {
     this.updateSongMap();
 
     // 更新房主
-    if (player === this.host) {
+    if (player === this.host)
       this.host = this.players.find(p => p.online) ?? this.players[0];
-      this.broadcast(format10(null, this));
-    }
 
     // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
     this.state = this.isAllOnline() ? RoomState.Choosing : RoomState.Locked;
@@ -115,7 +122,8 @@ export class Room {
     for (let pack of packs)
       if (pack)
         for (let p of this.players)
-          manager.udpServer.send(pack, p);
+          if (p.online)
+            manager.udpServer.send(pack, p);
   }
   pushPack(pack: Buffer) {
     this.#commandQueue.push(pack);
@@ -161,7 +169,6 @@ export class Room {
     };
   }
   getRoomInfoWithHost(): RoomInfoWithHost {
-    if (!this.host) throw new Error('room.host is null');
     return {
       host: BigInt(this.host.playerId),
       ...this.getRoomInfo(),

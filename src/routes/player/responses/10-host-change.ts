@@ -15,7 +15,6 @@ export const format = (
   clientTime: bigint | null,
   room: Room,
 ) => {
-  if (!room.host) throw new Error('room.host is null');
   let pack = schema.format({
     id: room.id,
     counter: ++room.counter,

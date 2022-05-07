@@ -27,8 +27,10 @@ const server = new Server<{ body: Buffer; player: Player }>('player', 4, {
 });
 
 const routes: ServerRoute<typeof server>[] = await Promise.all([
+  import('./01-try-give-host'),
   import('./09-ping'),
   import('./0a-leave-room'),
+  import('./0b-song-suggestion'),
 ]);
 routes.forEach(server.register.bind(server));
 

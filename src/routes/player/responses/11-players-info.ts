@@ -10,7 +10,7 @@ export const schema = p().struct([
   p('counter').u32(),    // [12, 16)
   p('clientTime').u64(), // [16, 24) std::chrono::steady_clock::now() / 1000
 
-  p('playersInfo').array(4, playerInfoWithNameSchema), // [16, 176)
+  p('playersInfo').array(4, playerInfoWithNameSchema), // [24, 184)
 ]);
 
 export const format = (

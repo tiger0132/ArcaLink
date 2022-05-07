@@ -10,10 +10,14 @@ export function decryptPack(data: Buffer, key: Buffer) {
   decipher.setAuthTag(authTag);
   let decrypted = Buffer.concat([decipher.update(body), decipher.final()]);
 
+  // 不知道为什么，616 会在正好是 16 的倍数的包的时候不 pad
+  // 作为 client 的时候，不太能正确处理 616 不 pad 的 12 包
+  return decrypted;
+
   // remove PKCS7 padding
-  let pad = decrypted[decrypted.length - 1];
-  if (pad > 16) throw new Error('invalid padding');
-  return pad ? decrypted.slice(0, -pad) : decrypted;
+  // let pad = decrypted[decrypted.length - 1];
+  // if (pad > 16) throw new Error('invalid padding');
+  // return pad ? decrypted.slice(0, -pad) : decrypted;
 }
 
 export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
