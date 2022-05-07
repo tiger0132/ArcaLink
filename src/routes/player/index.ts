@@ -30,6 +30,7 @@ const routes: ServerRoute<typeof server>[] = await Promise.all([
   import('./01-try-give-host'),
   import('./04-try-kick-player'),
   import('./07-unlock-update'),
+  import('./08-round-robin-enabled'),
   import('./09-ping'),
   import('./0a-leave-room'),
   import('./0b-song-suggestion'),
