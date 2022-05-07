@@ -39,8 +39,8 @@ export class Room {
     return this.#host;
   }
   set host(player: Player) { this.#host = player; }
-  setHost(player: Player, clientTime?: bigint) { // 修改并广播 10 包
-    if (this.#host === player) return;
+  setHost(player: Player, clientTime?: bigint, force?: true) { // 修改并广播 10 包
+    if (!force && this.#host === player) return;
     this.#host = player;
     this.broadcast(format10(clientTime ?? null, this));
   }

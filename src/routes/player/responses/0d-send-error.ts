@@ -6,10 +6,7 @@ import { p } from '@/lib/packer';
 import { randomUInt } from '@/lib/utils';
 
 export enum InGameError {
-  PlayerNotFound = 1, // 不存在的玩家
-  // 游戏内其实没有这个错误信息，但是似乎 01 包没找到玩家的时候是返回的这个
-
-  Unknown2 = 2,
+  // 1 和 2 似乎并没有什么固定的语义，游戏内也没有错误信息
 
   NotHost = 3, // 你不是房主
   CannotStart = 5, // 有玩家目前无法开始

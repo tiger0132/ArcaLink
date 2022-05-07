@@ -20,20 +20,18 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let { room } = player;
   let { clientTime, id } = data;
   try {
-    if (room.host !== player)
-      throw InGameError.NotHost;
+    if (room.host !== player) throw InGameError.NotHost;
 
     let host = room.players.find(p => p.playerId === id);
-    if (!host || host === player) // 给了不存在的人或者自己
-      throw InGameError.PlayerNotFound;
-    
-    if (!host.online)
-      throw InGameError.Unknown2; // 不在线返回 2
+    // 你知道吗：房主是可以给自己房主的
 
-    room.setHost(host, clientTime);
+    if (!host) throw 1; // 给了不存在的人
+    if (!host.online) throw 2; // 给了不在线的人
+
+    room.setHost(host, clientTime, true);
   } catch (e) {
     if (typeof e === 'number')
-    server.send(format0d(clientTime, room, e), player);
+      server.send(format0d(clientTime, room, e), player);
   }
 
   // 以及，616 似乎无论有没有成功修改 host 都会发一个 13 包
