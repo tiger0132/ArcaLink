@@ -14,7 +14,7 @@ export const schema = p().struct([
 
   p('token').buf(8),      // [4 , 12) token
   p('counter').u32(),     // [12, 16) 看起来像是某种命令计数一样的东西，似乎是每一条 S->C 的有效命令都会 +1，可能用于保证顺序（upd：看起来是用来补包？）
-  p('clientTime').u64(),  // [16, 24) std::chrono::steady_clock::now() / 1000
+  p('nonce').u64(),       // [16, 24) nonce
 
   p('songIdx').i16(),     // [24, 26)
 ]);
@@ -22,7 +22,7 @@ export const schema = p().struct([
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
-  let { clientTime, songIdx } = data;
+  let { nonce, songIdx } = data;
 
   try {
     if (player !== room.host)
@@ -37,10 +37,10 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     room.state = RoomState.NotReady;
     room.songIdx = songIdx;
 
-    room.broadcast(format11(clientTime, room), format13(clientTime, room));
-    server.send(format0d(clientTime, room, 0), player);
+    room.broadcast(format11(nonce, room), format13(nonce, room));
+    server.send(format0d(nonce, room, 0), player);
   } catch (e) {
     if (typeof e === 'number')
-      server.send(format0d(clientTime, room, e), player);
+      server.send(format0d(nonce, room, e), player);
   }
 };

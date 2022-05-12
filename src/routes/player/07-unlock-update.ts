@@ -10,7 +10,7 @@ export const schema = p().struct([
 
   p('token').buf(8),      // [4 , 12)
   p('counter').u32(),     // [12, 16)
-  p('clientTime').u64(),  // [16, 24) std::chrono::steady_clock::now() / 1000
+  p('nonce').u64(),       // [16, 24) nonce
 
   p('songMap').buf(state.common.songMapLen),  // [24, 536)
 ]);
@@ -18,8 +18,8 @@ export const schema = p().struct([
 export const handler: PlayerHandler = ({ body, player }) => {
   let [data] = schema.parse(body);
   let { room } = player;
-  let { clientTime, songMap } = data;
+  let { nonce, songMap } = data;
 
   player.songMap = songMap;
-  room.updateSongMap(clientTime, true);
+  room.updateSongMap(nonce, true);
 };

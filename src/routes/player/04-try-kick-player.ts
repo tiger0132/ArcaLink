@@ -11,14 +11,14 @@ export const schema = p().struct([
 
   p('token').buf(8),      // [4 , 12)
   p('counter').u32(),     // [12, 16)
-  p('clientTime').u64(),  // [16, 24) std::chrono::steady_clock::now() / 1000
+  p('nonce').u64(),       // [16, 24) nonce
   p('id').u64(),          // [24, 32) Player.id
 ]);
 
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
-  let { clientTime, id } = data;
+  let { nonce, id } = data;
   try {
     if (room.host !== player) throw InGameError.NotHost;
 
@@ -30,6 +30,6 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     room.removePlayer(target);
   } catch (e) {
     if (typeof e === 'number')
-      server.send(format0d(clientTime, room, e), player);
+      server.send(format0d(nonce, room, e), player);
   }
 };

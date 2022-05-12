@@ -28,14 +28,14 @@ export class Room {
 
   get idU64() { return this.id.readBigUInt64LE(); }
 
-  setState(state: RoomState, clientTime?: bigint) { // 修改并广播 13 包
+  setState(state: RoomState, nonce?: bigint) { // 修改并广播 13 包
     if (this.state === state) return;
     this.state = state;
-    this.broadcast(format13(clientTime ?? null, this));
+    this.broadcast(format13(nonce ?? null, this));
   }
-  setRoundRobin(roundRobin: boolean, clientTime?: bigint) { // 其实只有那一个地方会设置 roundrobin，纯粹就是为了统一
+  setRoundRobin(roundRobin: boolean, nonce?: bigint) { // 其实只有那一个地方会设置 roundrobin，纯粹就是为了统一
     this.roundRobin = roundRobin;
-    this.broadcast(format13(clientTime ?? null, this));
+    this.broadcast(format13(nonce ?? null, this));
   }
 
   get host() {
@@ -43,10 +43,10 @@ export class Room {
     return this.#host;
   }
   set host(player: Player) { this.#host = player; }
-  setHost(player: Player, clientTime?: bigint, force?: true) { // 修改并广播 10 包
+  setHost(player: Player, nonce?: bigint, force?: true) { // 修改并广播 10 包
     if (!force && this.#host === player) return;
     this.#host = player;
-    this.broadcast(format10(clientTime ?? null, this));
+    this.broadcast(format10(nonce ?? null, this));
   }
 
   constructor() {
@@ -58,7 +58,7 @@ export class Room {
     manager.roomCodeMap.set(this.code, this);
     manager.roomIdMap.set(this.idU64, this);
   }
-  updateSongMap(clientTime?: bigint, force?: true) {
+  updateSongMap(nonce?: bigint, force?: true) {
     let oldSongMap = Buffer.from(this.songMap);
     this.songMap.fill(0xFF);
     this.players.forEach(p => {
@@ -66,7 +66,7 @@ export class Room {
         this.songMap[i] &= p.songMap[i];
     });
     if (force || !oldSongMap.equals(this.songMap))
-      this.broadcast(format14(clientTime ?? null, this));
+      this.broadcast(format14(nonce ?? null, this));
   }
   canPlayDiff(songIdxWithDiff: number) {
     if (songIdxWithDiff < 0 || songIdxWithDiff >= state.common.songMapLen * 8)

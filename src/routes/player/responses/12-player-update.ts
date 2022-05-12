@@ -8,14 +8,14 @@ export const schema = p().struct([
   p('prefix').buf(4, Buffer.from('0616120b', 'hex')),
   p('id').buf(8),        // [4,  12) Room.id
   p('counter').u32(),    // [12, 16)
-  p('clientTime').u64(), // [16, 24) std::chrono::steady_clock::now() / 1000
+  p('nonce').u64(),      // [16, 24) nonce
 
   p('playerIndex').u8(), // [24]
   playerInfoSchema,      // [25, 48)
 ]);
 
 export const format = (
-  clientTime: bigint | null,
+  nonce: bigint | null,
   room: Room,
   playerIndex: number,
   playerInfo?: typeOf<typeof playerInfoSchema>,
@@ -23,7 +23,7 @@ export const format = (
   let pack = schema.format({
     id: room.id,
     counter: ++room.counter,
-    clientTime: clientTime ?? randomUInt(),
+    nonce: nonce ?? randomUInt(),
 
     playerIndex,
     playerInfo: playerInfo ?? room.players[playerIndex].getPlayerInfo(),

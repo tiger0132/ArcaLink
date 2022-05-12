@@ -11,14 +11,14 @@ export const schema = p().struct([
 
   p('token').buf(8),      // [4 , 12)
   p('counter').u32(),     // [12, 16)
-  p('clientTime').u64(),  // [16, 24) std::chrono::steady_clock::now() / 1000
+  p('nonce').u64(),       // [16, 24) nonce
   p('id').u64(),          // [24, 32) Player.id
 ]);
 
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
-  let { clientTime, id } = data;
+  let { nonce, id } = data;
   
   try {
     if (room.host !== player) throw InGameError.NotHost;
@@ -29,10 +29,10 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     if (!host) throw 1; // 给了不存在的人
     if (!host.online) throw 2; // 给了不在线的人
 
-    room.setHost(host, clientTime, true);
+    room.setHost(host, nonce, true);
   } catch (e) {
     if (typeof e === 'number')
-      server.send(format0d(clientTime, room, e), player);
+      server.send(format0d(nonce, room, e), player);
   }
 
   // 以及，616 似乎无论有没有成功修改 host 都会发一个 13 包
