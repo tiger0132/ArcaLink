@@ -14,10 +14,18 @@ export const schema = p().struct([
   p('songIdxWithDiff').i16(),     // [16, 18)
 ]);
 
-export const handler: PlayerHandler = ({body, player }, server) => {
+export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { songIdxWithDiff } = data;
+
+  if (room.canPlaySong(songIdxWithDiff) === 'invalid')
+    return;
+  if (
+    room.canPlaySong(songIdxWithDiff) === 'locked' &&
+    state.common.ignoreLockedIdx
+  )
+    return;
 
   let pack0f = format0f(room, player, songIdxWithDiff);
   for (let p of room.players)

@@ -39,7 +39,7 @@ const schema = z.object({
   name: z.string(),
   userId: z.number(),
   char: z.number(),
-  songMap: z.string().length(state.common.songMapLen * 2),
+  songMap: z.string().refine(x => x.length === state.common.songMapLen * 2),
 });
 
 router.post('/multiplayer/room/create', async ctx => {

@@ -70,3 +70,4 @@ export const hrtime = () => {
 
 export const getEncryptedSize = (size: number) => ((size + 15) & 15) + 8 + 12 + 12;
 export const randomUInt = () => BigInt(randomInt(0, 4294967295));
+export const getDiffPair = (x: number) => [x >> 2, x & 3];

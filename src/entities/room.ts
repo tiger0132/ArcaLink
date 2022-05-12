@@ -1,5 +1,5 @@
 import { Player } from './player';
-import { getEncryptedSize, hrtime } from '@/lib/utils';
+import { getDiffPair, getEncryptedSize, hrtime } from '@/lib/utils';
 import { defaultPlayer, defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, RoomInfo, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
 import { p, Tuple, typeOf } from '@/lib/packer';
 import { format as format15 } from '@/routes/player/responses/15-full-roominfo';
@@ -59,7 +59,7 @@ export class Room {
     manager.roomIdMap.set(this.idU64, this);
   }
   updateSongMap(clientTime?: bigint, force?: true) {
-    let oldSongMap = this.songMap;
+    let oldSongMap = Buffer.from(this.songMap);
     this.songMap.fill(0xFF);
     this.players.forEach(p => {
       for (let i = 0; i < state.common.songMapLen; i++)
@@ -67,6 +67,12 @@ export class Room {
     });
     if (force || !oldSongMap.equals(this.songMap))
       this.broadcast(format14(clientTime ?? null, this));
+  }
+  canPlaySong(songIdxWithDiff: number) {
+    if (songIdxWithDiff < 0 || songIdxWithDiff >= state.common.songMapLen * 8)
+      return 'invalid';
+    let i = songIdxWithDiff >> 3, j = songIdxWithDiff & 7;
+    return (this.songMap[i] >> j) & 1 ? 'ok' : 'locked';
   }
   isAllOnline() {
     return this.players.every(p => p.online);

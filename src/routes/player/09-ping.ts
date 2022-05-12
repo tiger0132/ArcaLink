@@ -29,8 +29,6 @@ export const schema = p().struct([
   p('uncapped').u8(),     // [37]     a9 是否觉醒
 ]);
 
-// NOTE: clientTime 字段在 ping 里用的是 steady_clock，但是在别的地方有的用的是 arc4random，但是我懒得区分了
-
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
@@ -46,16 +44,11 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     return;
   }
 
-  server.send(format0c(clientTime, room), player, true); // 首先返回正常 0c 包
-
-  if (manager.playerTokenMap.get(player.tokenU64) !== player) logger.error('wtf0');
-  if (manager.playerUidMap.get(player.userId) !== player) logger.error('wtf1');
-  if (manager.roomCodeMap.get(player.room.code) !== room) logger.error('wtf2');
-  if (manager.roomIdMap.get(player.room.idU64) !== room) logger.error('wtf3');
-  // if (manager.playerTokenMap.size !== 1) logger.error('wtf4');
-  // if (manager.playerUidMap.size !== 1) logger.error('wtf5');
-  // if (manager.roomCodeMap.size !== 1) logger.error('wtf6');
-  // if (manager.roomIdMap.size !== 1) logger.error('wtf7');
+  // 首先返回正常 0c 包
+  if (Date.now() - player.lastPing >= state.common.pingInterval) {
+    player.lastPing = Date.now();
+    server.send(format0c(clientTime, room), player, true);
+  }
 
   // 初次连接 / 重新连接
   player.refreshTimer();
@@ -68,36 +61,15 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
       room.setState(RoomState.Choosing);
     room.broadcast(format13(null, room));
   }
+
+  // 更新玩家信息
+  let flag12 = false;
+  for (let key of ['char', 'uncapped'] as const)
+    if (data[key] !== player[key]) {
+      (player as any)[key] = data[key];
+      flag12 = true;
+      break;
+    }
+  if (flag12)
+    room.broadcast(format12(null, room, room.players.indexOf(player)));
 };
-
-// 其实为了更好的稳定性，似乎应该在 counter 增加前先发包
-// 但是要改的逻辑挺多的，，而且感觉会很丑，就算了
-
-/*
-default (MultiplayerLobbyLayer::update): 0 0 1 -1 0 -1 29 1
-
-selectsong [9876057, 0, 3, 0, 3, -1, 29, 0]
-
-在游玩时
-- a2 似乎是你的分数
-- a3 似乎是当前曲目的时间
-- a5, a6, a7, a8, a9 分别是 [-1, 0, -1, -1, 0]
-- 如果死了或者结算，a4 会变成 8
-- 如果活着，a4 会变成 7
-
----
-
-创房的时候会发一个 15，然后发一个 13，counter 分别是 4 和 5
-
----
-
-有人进房的话，先会发一个 11，然后发 13
-真正加入之后不知道
-
----
-
-如果 counter 为 0 那么一定会给一个最新 counter 的 full-roominfo
-为正数且小于最新 counter 那么会给 part-roominfo
-大于最新 counter 就直接不给
-
-*/

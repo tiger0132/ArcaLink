@@ -4,6 +4,20 @@ import { Room } from './room';
 import { ClearType, Difficulty, PlayerInfo, PlayerInfoWithName, PlayerScore, PlayerState } from '@/lib/linkplay';
 import { RemoteInfo } from 'dgram';
 
+export interface ScoreInfo {
+  char: number;
+  difficulty: Difficulty;
+  score: number;
+  clearType: ClearType;
+}
+
+const defaultScore = {
+  char: -1,
+  difficulty: Difficulty.None,
+  score: 0,
+  clearType: ClearType.None,
+};
+
 export class Player {
   name: Buffer;       // buf(16) (string)
   playerId: bigint;   // u32
@@ -22,10 +36,13 @@ export class Player {
   downloadProg: number = 0;
   online: boolean = false;
 
+  lastScore?: ScoreInfo;
+
   personalBest: boolean = false;
   top: boolean = false;
 
   remote?: RemoteInfo;
+  lastPing: number = 0;
   #disconnectTimer: NodeJS.Timeout;
 
   get tokenU64() { return this.token.readBigUInt64LE(); }
@@ -96,11 +113,9 @@ export class Player {
     };
   };
   getLastScore(): PlayerScore {
+    let lastScore = this.lastScore ?? defaultScore;
     return {
-      char: this.char,
-      difficulty: this.difficulty,
-      score: this.score,
-      clearType: this.clearType,
+      ...lastScore,
       persenalBest: this.personalBest ? 1 : 0,
       top: this.top ? 1 : 0,
     };

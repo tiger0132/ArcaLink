@@ -11,7 +11,7 @@ export enum InGameError {
   NotHost = 3, // 你不是房主
   CannotStart = 5, // 有玩家目前无法开始
   NeedMorePlayers = 6, // 需要更多的玩家以开始
-  CannotPlayThisSong = 7, // 有玩家无法游玩这首歌曲
+  CannotPlaySong = 7, // 有玩家无法游玩这首歌曲
 }
 
 export const schema = p().struct([

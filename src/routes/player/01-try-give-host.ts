@@ -19,6 +19,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { clientTime, id } = data;
+  
   try {
     if (room.host !== player) throw InGameError.NotHost;
 
