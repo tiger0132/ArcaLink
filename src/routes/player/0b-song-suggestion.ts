@@ -18,6 +18,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { songIdxWithDiff } = data;
+  logger.info(`${player.name.toString().trim()} suggested song ${songIdxWithDiff}`);
 
   if (room.canPlayDiff(songIdxWithDiff) === 'invalid')
     return;

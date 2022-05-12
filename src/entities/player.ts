@@ -1,8 +1,11 @@
 import crypto from 'crypto';
 
 import { Room } from './room';
-import { ClearType, Difficulty, PlayerInfo, PlayerInfoWithName, PlayerScore, PlayerState } from '@/lib/linkplay';
+import { ClearType, Difficulty, PlayerInfo, PlayerInfoWithName, PlayerScore, PlayerState, RoomState } from '@/lib/linkplay';
 import { RemoteInfo } from 'dgram';
+import { schema as clientPingSchema } from '@/routes/player/09-ping';
+import { format as format12 } from '@/routes/player/responses/12-player-update';
+import { typeOf } from '@/lib/packer';
 
 export interface ScoreInfo {
   char: number;
@@ -48,11 +51,14 @@ export class Player {
   get tokenU64() { return this.token.readBigUInt64LE(); }
   static #seq: bigint = 1n;
 
+  public update = update;
+
   constructor(
     public room: Room,
     name: Buffer,
     userId: number,
     char: number,
+    uncapped: boolean,
     token: Buffer | null,
     songMap: Buffer
   ) {
@@ -63,6 +69,7 @@ export class Player {
     this.playerId = Player.#seq++;
     this.userId = userId;
     this.char = char;
+    this.uncapped = uncapped;
     this.token = token ?? manager.randomToken();
     this.key = crypto.randomBytes(16);
     this.songMap = songMap;
@@ -96,14 +103,14 @@ export class Player {
     return {
       id: this.playerId,
       char: this.char,
-      uncapped: this.uncapped ? 1 : 0,
+      uncapped: this.uncapped,
       difficulty: this.difficulty,
       score: this.score,
       'timer?': this['timer?'],
       clearType: this.clearType,
       state: this.state,
       downloadProg: this.downloadProg,
-      online: this.online ? 1 : 0,
+      online: this.online,
     };
   }
   getPlayerInfoWithName(): PlayerInfoWithName {
@@ -116,8 +123,51 @@ export class Player {
     let lastScore = this.lastScore ?? defaultScore;
     return {
       ...lastScore,
-      persenalBest: this.personalBest ? 1 : 0,
-      top: this.top ? 1 : 0,
+      persenalBest: this.personalBest,
+      top: this.top,
     };
   }
 };
+
+type Keys = keyof typeOf<typeof clientPingSchema> & keyof Player;
+type Fn<T extends Keys> = (x: typeOf<typeof clientPingSchema>[T]) => null | typeOf<typeof clientPingSchema>[T];
+type UpdateRule<T extends Keys> = Readonly<
+  [T] |
+  [T, Fn<T>] |
+  [T, ReadonlyArray<RoomState>] |
+  [T, ReadonlyArray<RoomState>, Fn<T>]
+>;
+
+const rules: ReadonlyArray<UpdateRule<Keys>> = [
+  ['char'],
+  ['uncapped'],
+  ['state'],
+
+  ['score', [RoomState.NotReady]],
+  ['difficulty', [RoomState.NotReady]], // 对，616 没有判 >= 0
+  ['clearType', [RoomState.NotReady]],
+  ['downloadProg', [RoomState.NotReady]],
+] as const;
+
+function update(this: Player, data: typeOf<typeof clientPingSchema>) {
+  let flag12 = false;
+  for (let rule of rules) {
+    let [key] = rule, state, fn;
+    if (this[key] === data[key]) continue;
+    if (Array.isArray(rule[1])) {
+      state = rule[1];
+      if (!state.includes(this.room.state)) continue;
+      fn = rule[2] as Fn<Keys>;
+    } else
+      fn = rule[1] as Fn<Keys>;
+
+    let result: unknown = data[key];
+    if (fn && (result = fn(data[key])) === null) continue;
+
+    // logger.info(`update ${player.name.toString().trim()}: ${key} from ${player[key]} to ${result}`);
+    (this as any)[key] = result;
+    flag12 = true;
+  }
+  if (flag12)
+    this.room.broadcast(format12(null, this.room, this.room.players.indexOf(this)));
+}  

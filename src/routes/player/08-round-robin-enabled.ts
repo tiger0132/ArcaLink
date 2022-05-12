@@ -12,7 +12,7 @@ export const schema = p().struct([
   p('token').buf(8),      // [4 , 12)
   p('counter').u32(),     // [12, 16)
   p('nonce').u64(),       // [16, 24)
-  p('enabled').u8(),      // [24]
+  p('enabled').bool(),      // [24]
 ]);
 
 export const handler: PlayerHandler = ({ body, player }, server) => {
@@ -22,5 +22,5 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   if (room.host !== player)
     return server.send(format0d(nonce, room, InGameError.NotHost), player);
 
-  room.setRoundRobin(Boolean(enabled), nonce);
+  room.setRoundRobin(enabled, nonce);
 };

@@ -1,12 +1,13 @@
 import { Player } from './player';
 import { getDiffPair, getEncryptedSize, hrtime } from '@/lib/utils';
-import { defaultPlayer, defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, RoomInfo, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
+import { ClearType, defaultPlayer, defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, PlayerState, RoomInfo, roomInfoSchema, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
 import { p, Tuple, typeOf } from '@/lib/packer';
 import { format as format15 } from '@/routes/player/responses/15-full-roominfo';
 import { format as format12 } from '@/routes/player/responses/12-player-update';
 import { format as format10 } from '@/routes/player/responses/10-host-change';
 import { format as format14 } from '@/routes/player/responses/14-songmap-update';
 import { format as format13 } from '@/routes/player/responses/13-part-roominfo';
+import { format as format11 } from '@/routes/player/responses/11-players-info';
 
 export class Room {
   id: Buffer;
@@ -19,7 +20,7 @@ export class Room {
   countdown: number = -1;
   #host: Player | null = null;
 
-  songIdx: number = -1;
+  songIdxWithDiff: number = -1;
   lastSong: number = -1;
   roundRobin: boolean = false;
 
@@ -83,6 +84,13 @@ export class Room {
   isAllOnline() {
     return this.players.every(p => p.online);
   }
+  isReady(state: PlayerState) {
+    return this.players.every(p => p.online && p.state === state);
+  }
+  updateState() {
+    let state = getNewState.call(this);
+    if (state) this.setState(state);
+  }
 
   disconnectPlayer(player: Player) {
     let idx = this.players.indexOf(player);
@@ -95,13 +103,30 @@ export class Room {
       let host = this.players.find(p => p.online);
       if (host) this.setHost(host);
     }
-
-    // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
-    this.setState(RoomState.Locked);
+    this.updateState();
   }
   removePlayer(player: Player) {
     let idx = this.players.indexOf(player);
     if (idx === -1) throw new Error('player not found');
+
+    if (this.state === RoomState.NotReady || this.state === RoomState.Countdown) { // 在准备界面时的退出流程
+      // 鲨人，尸体清走
+      player.destroy();
+      this.players.splice(idx, 1);
+      if (!this.players.length) return this.destroy(); // 并不应该出现，但是还是加上吧
+
+      // 给被鲨的人发个 11 包
+      let pack11 = format11(null, this);
+      manager.udpServer.send(pack11, player);
+
+      // 更新房主，但是不发 10 包
+      if (player === this.host)
+        this.#host = this.players.find(p => p.online) ?? this.players[0];
+
+      // 进入一般退出准备界面流程
+      this.leavePrepareState(null, pack11);
+      return;
+    }
 
     // 鲨人，广播 12 包
     player.destroy();
@@ -117,9 +142,19 @@ export class Room {
     // 更新房主
     if (player === this.host)
       this.setHost(this.players.find(p => p.online) ?? this.players[0]);
+    this.updateState();
+  }
+  leavePrepareState(nonce: bigint | null, _pack11?: Buffer) { // 从准备界面回到选曲界面
+    for (let player of this.players) {
+      player.score = 0;
+      player.clearType = ClearType.None;
+      player.downloadProg = -1;
+      // player.difficulty = Difficulty.None; // 理论上应该有这样一个行为，但是 616 没有
+    }
+    this.state = RoomState.Locked;
+    this.songIdxWithDiff = -1;
 
-    // FIXME: 可以预见的是，在游玩曲目时，即使有人被强退了，这个状态也不会跳回 1 / 2。到时候再处理吧，需要进行更多测试
-    this.setState(this.isAllOnline() ? RoomState.Choosing : RoomState.Locked);
+    this.broadcast(_pack11 ?? format11(nonce, this), format13(nonce, this));
   }
   destroy() {
     manager.roomCodeMap.delete(this.code);
@@ -173,13 +208,13 @@ export class Room {
       state: this.state,
       countdown: this.countdown,
       serverTime: hrtime(),
-      songIdx: this.songIdx,
+      songIdxWithDiff: this.songIdxWithDiff,
       'interval?': 1000, // from 616
       'times?': Buffer.from('\x64\x00\x00\x00\x00\x00\x00'), // from 616
 
       lastScores: this.getLastScores(),
       lastSong: this.lastSong,
-      roundRobin: this.roundRobin ? 1 : 0,
+      roundRobin: this.roundRobin,
     };
   }
   getRoomInfoWithHost(): RoomInfoWithHost {
@@ -189,3 +224,32 @@ export class Room {
     };
   }
 };
+
+// 转移到新状态
+type Rule =
+  { if: PlayerState, then: RoomState } |
+  { ifNot: PlayerState, then: RoomState }
+  ;
+const rulesMap: Partial<Record<RoomState, Rule[]>> = {
+  [RoomState.Locked]: [
+    { if: PlayerState.Idle, then: RoomState.Idle }
+  ],
+  [RoomState.Idle]: [
+    { ifNot: PlayerState.Idle, then: RoomState.Locked }
+  ],
+  [RoomState.NotReady]: [
+    { if: PlayerState.Ready, then: RoomState.Countdown }
+  ],
+};
+function getNewState(this: Room) {
+  let rules = rulesMap[this.state];
+  if (!rules) return null;
+
+  for (let rule of rules) {
+    if ('if' in rule && this.isReady(rule.if))
+      return rule.then;
+    if ('ifNot' in rule && !this.isReady(rule.ifNot))
+      return rule.then;
+  }
+  return null;
+}

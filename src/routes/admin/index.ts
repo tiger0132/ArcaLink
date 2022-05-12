@@ -39,6 +39,7 @@ const schema = z.object({
   name: z.string(),
   userId: z.number(),
   char: z.number(),
+  uncapped: z.boolean(),
   songMap: z.string().refine(x => x.length === state.common.songMapLen * 2),
 });
 
@@ -46,7 +47,7 @@ router.post('/multiplayer/room/create', async ctx => {
   let parsed = await schema.safeParseAsync(ctx.request.body);
   if (!parsed.success) throw parsed.error.toString();
 
-  let { key, name, userId, char, songMap: _songMap } = parsed.data;
+  let { key, name, userId, char, uncapped, songMap: _songMap } = parsed.data;
   if (key !== config.server.key) throw 'invalid key';
 
   let songMap = Buffer.from(_songMap, 'hex');
@@ -61,7 +62,7 @@ router.post('/multiplayer/room/create', async ctx => {
   // 官服行为，但是其实 key 想是啥就是啥
   // let player = new Player(room, Buffer.from(name), userId, char, room.id, songMap);
 
-  player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+  player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
   room.players = [player];
   room.host = player;
   room.songMap = songMap;
@@ -91,7 +92,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let parsed = await schema.safeParseAsync(ctx.request.body);
   if (!parsed.success) throw parsed.error.toString();
 
-  let { key, name, userId, char, songMap: _songMap } = parsed.data;
+  let { key, name, userId, char, uncapped, songMap: _songMap } = parsed.data;
   if (key !== config.server.key) throw 'invalid key';
 
   let songMap = Buffer.from(_songMap, 'hex');
@@ -101,7 +102,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let room = manager.roomCodeMap.get(code);
   if (!room) throw 1202;
   if (room.players.length === 4) throw 1201;
-  if (room.state > RoomState.Choosing) throw 1205; // FIXME: 其实不知道 GameEnd state 可不可以，还没试过
+  if (room.state > RoomState.Idle) throw 1205; // FIXME: 其实不知道 GameEnd state 可不可以，还没试过
 
   let player = manager.playerUidMap.get(userId);
   let pack11;
@@ -114,7 +115,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
     if (idx === -1) throw 'player not found';
     oldPlayer.destroy();
 
-    player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
     room.players[idx] = player;
     manager.udpServer.send(pack11 = format11(null, room), oldPlayer);
 
@@ -135,7 +136,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   } else {
     if (player)
       player.room.removePlayer(player);
-    player = new Player(room, Buffer.from(name), userId, char, null, songMap);
+    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
     room.players.push(player);
   }
 
