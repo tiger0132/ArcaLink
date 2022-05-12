@@ -28,7 +28,11 @@ const server = new Server<{ body: Buffer; player: Player }>('player', 4, {
 
 const routes: ServerRoute<typeof server>[] = await Promise.all([
   import('./01-try-give-host'),
+  import('./02-try-select-song'),
+  // import('./03-song-finish'),
   import('./04-try-kick-player'),
+  // import('./05-wtf-is-this'),
+  // import('./06-return-to-lobby'),
   import('./07-unlock-update'),
   import('./08-round-robin-enabled'),
   import('./09-ping'),
