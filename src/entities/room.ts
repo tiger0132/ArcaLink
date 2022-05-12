@@ -68,11 +68,17 @@ export class Room {
     if (force || !oldSongMap.equals(this.songMap))
       this.broadcast(format14(clientTime ?? null, this));
   }
-  canPlaySong(songIdxWithDiff: number) {
+  canPlayDiff(songIdxWithDiff: number) {
     if (songIdxWithDiff < 0 || songIdxWithDiff >= state.common.songMapLen * 8)
       return 'invalid';
     let i = songIdxWithDiff >> 3, j = songIdxWithDiff & 7;
     return (this.songMap[i] >> j) & 1 ? 'ok' : 'locked';
+  }
+  canPlaySong(songIdx: number) {
+    if (songIdx < 0 || songIdx >= state.common.songMapLen * 2)
+      return 'invalid';
+    let i = songIdx >> 1, j = songIdx & 1;
+    return (this.songMap[i] >> (j * 4)) & 0xF ? 'ok' : 'locked';
   }
   isAllOnline() {
     return this.players.every(p => p.online);

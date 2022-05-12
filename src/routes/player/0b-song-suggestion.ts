@@ -19,10 +19,10 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let { room } = player;
   let { songIdxWithDiff } = data;
 
-  if (room.canPlaySong(songIdxWithDiff) === 'invalid')
+  if (room.canPlayDiff(songIdxWithDiff) === 'invalid')
     return;
   if (
-    room.canPlaySong(songIdxWithDiff) === 'locked' &&
+    room.canPlayDiff(songIdxWithDiff) === 'locked' &&
     state.common.ignoreLockedIdx
   )
     return;
