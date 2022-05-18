@@ -11,7 +11,7 @@ function createLogger(logPath: string, rotate: boolean = true) {
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.splat(),
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
         winston.format.printf(info => `${info.level}:`.padEnd(maxLength, ' ') + `${info.message} [${info.timestamp}]`)
       )
     })]
@@ -25,7 +25,7 @@ function createLogger(logPath: string, rotate: boolean = true) {
         level: 'verbose',
         createSymlink: true,
         format: winston.format.combine(
-          winston.format.timestamp(),
+          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
           winston.format.json()
         )
       }));
@@ -34,7 +34,7 @@ function createLogger(logPath: string, rotate: boolean = true) {
         filename: path.join(logPath, 'error.log'),
         level: 'error',
         format: winston.format.combine(
-          winston.format.timestamp(),
+          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
           winston.format.json()
         )
       }));
@@ -43,7 +43,7 @@ function createLogger(logPath: string, rotate: boolean = true) {
         filename: path.join(logPath, 'full.log'),
         level: 'verbose',
         format: winston.format.combine(
-          winston.format.timestamp(),
+          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
           winston.format.json()
         )
       }));

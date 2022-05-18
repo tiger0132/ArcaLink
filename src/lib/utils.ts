@@ -58,8 +58,9 @@ export function toHex(buf: Buffer) {
 }
 
 export function stringifyBuf(buf: Buffer) {
-  let result = buf.slice(0, 256).toString('hex');
-  if (buf.length > 256) result += ` ... ${buf.length - 256} more bytes`;
+  // let result = buf.slice(0, 256).toString('hex');
+  let result = buf.toString('hex');
+  // if (buf.length > 256) result += ` ... ${buf.length - 256} more bytes`;
   return `<Buffer ${result}>`;
 }
 

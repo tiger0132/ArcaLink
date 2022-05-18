@@ -76,7 +76,8 @@ export class Server<
   send(msg: Buffer, remote: dgram.RemoteInfo | Player, silent: boolean = false) {
     if (remote instanceof Player) {
       if (!remote.remote) return;
-      if (!silent) logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
+      // if (!silent)
+      logger.debug(`[${this.name}] send to ${remote.name} - ${stringifyBuf(msg)}`);
       this.server.send(encryptPack(remote.token, msg, remote.key), remote.remote.port, remote.remote.address);
     } else
       this.server.send(msg, remote.port, remote.address);

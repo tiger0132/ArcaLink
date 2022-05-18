@@ -25,7 +25,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   try {
     if (player !== room.host)
       throw InGameError.NotHost;
-    if (room.state !== RoomState.NotReady && room.state !== RoomState.Countdown) // mark
+    if (room.state !== RoomState.NotReady)
       throw 4;
 
     room.leavePrepareState(nonce);

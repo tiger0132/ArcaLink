@@ -33,13 +33,17 @@ export class Player {
   uncapped: boolean = false;
   difficulty: Difficulty = Difficulty.None;
   score: number = 0;
-  'timer?': number = 0;
+  songTime: number = 0;
   clearType: ClearType = ClearType.None;
   state: PlayerState = 1;
   downloadProg: number = 0;
   online: boolean = false;
 
-  lastScore?: ScoreInfo;
+  // 分数广播时使用
+  lastScore: number = 0;
+  lastSongTime: number = 0;
+
+  lastPlay?: ScoreInfo;
 
   personalBest: boolean = false;
   top: boolean = false;
@@ -51,7 +55,7 @@ export class Player {
   get tokenU64() { return this.token.readBigUInt64LE(); }
   static #seq: bigint = 1n;
 
-  public update = update;
+  public updateData = update;
 
   constructor(
     public room: Room,
@@ -106,7 +110,7 @@ export class Player {
       uncapped: this.uncapped,
       difficulty: this.difficulty,
       score: this.score,
-      'timer?': this['timer?'],
+      songTime: this.songTime,
       clearType: this.clearType,
       state: this.state,
       downloadProg: this.downloadProg,
@@ -120,9 +124,8 @@ export class Player {
     };
   };
   getLastScore(): PlayerScore {
-    let lastScore = this.lastScore ?? defaultScore;
     return {
-      ...lastScore,
+      ...(this.lastPlay ?? defaultScore),
       persenalBest: this.personalBest,
       top: this.top,
     };
@@ -141,10 +144,10 @@ type UpdateRule<T extends Keys> = Readonly<
 const rules: ReadonlyArray<UpdateRule<Keys>> = [
   ['char'],
   ['uncapped'],
-  ['state'],
+  ['state', x => x < PlayerState.GameEnd], // GameEnd 只能通过 03 包进入
 
   ['score', [RoomState.NotReady]],
-  ['difficulty', [RoomState.NotReady]], // 对，616 没有判 >= 0
+  ['difficulty', [RoomState.NotReady]],
   ['clearType', [RoomState.NotReady]],
   ['downloadProg', [RoomState.NotReady]],
 ] as const;
@@ -152,11 +155,10 @@ const rules: ReadonlyArray<UpdateRule<Keys>> = [
 function update(this: Player, data: typeOf<typeof clientPingSchema>) {
   let flag12 = false;
   for (let rule of rules) {
-    let [key] = rule, state, fn;
+    let [key] = rule, fn;
     if (this[key] === data[key]) continue;
     if (Array.isArray(rule[1])) {
-      state = rule[1];
-      if (!state.includes(this.room.state)) continue;
+      if (!rule[1].includes(this.room.state)) continue;
       fn = rule[2] as Fn<Keys>;
     } else
       fn = rule[1] as Fn<Keys>;
@@ -164,7 +166,7 @@ function update(this: Player, data: typeOf<typeof clientPingSchema>) {
     let result: unknown = data[key];
     if (fn && (result = fn(data[key])) === null) continue;
 
-    // logger.info(`update ${player.name.toString().trim()}: ${key} from ${player[key]} to ${result}`);
+    logger.info(`update ${this.name.toString().trim()}: ${key} from ${this[key]} to ${result}`);
     (this as any)[key] = result;
     flag12 = true;
   }

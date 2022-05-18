@@ -15,14 +15,25 @@ export const schema = p().struct([
 export const format = (
   nonce: bigint,
   room: Room
-) => schema.format({
-  id: room.id,
-  counter: room.counter,
-  nonce,
-  state: room.state,
-  countdown: room.countdown,
-  serverTime: hrtime(),
-});
+) => {
+  // 这个地方应该要更新倒计时，如果不更新会导致准备页面倒计时反复横跳
+  // 但是如果你更新，它就会失去同步
+  // 我是再也懒得碰 616 这些个贵物写的垃圾代码了
+  
+  
+  // PRs welcome
+
+  // room.updateCountdown();
+
+  return schema.format({
+    id: room.id,
+    counter: room.counter,
+    nonce,
+    state: room.state,
+    countdown: room.countdown,
+    serverTime: hrtime(),
+  });
+};
 
 export const stringify = (data: typeof schema['type']) => [
   '[0c ping]',

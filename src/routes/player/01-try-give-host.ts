@@ -1,3 +1,4 @@
+import { RoomState } from '@/lib/linkplay';
 import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
@@ -28,6 +29,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
 
     if (!host) throw 1; // 给了不存在的人
     if (!host.online) throw 2; // 给了不在线的人
+    if (room.state > RoomState.Idle) throw 4; // 似乎在已经开始之后就不能给了
 
     room.setHost(host, nonce, true);
   } catch (e) {

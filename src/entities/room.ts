@@ -15,10 +15,7 @@ export class Room {
   players: Player[];
   songMap: Buffer;
 
-  state: RoomState = RoomState.Locked;
   counter: number = 0;
-  countdown: number = -1;
-  #host: Player | null = null;
 
   songIdxWithDiff: number = -1;
   lastSong: number = -1;
@@ -29,6 +26,7 @@ export class Room {
 
   get idU64() { return this.id.readBigUInt64LE(); }
 
+  state: RoomState = RoomState.Locked;
   setState(state: RoomState, nonce?: bigint) { // 修改并广播 13 包
     if (this.state === state) return;
     this.state = state;
@@ -39,6 +37,7 @@ export class Room {
     this.broadcast(format13(nonce ?? null, this));
   }
 
+  #host: Player | null = null;
   get host() {
     if (!this.#host) throw new Error('room.host is null');
     return this.#host;
@@ -48,6 +47,17 @@ export class Room {
     if (!force && this.#host === player) return;
     this.#host = player;
     this.broadcast(format10(nonce ?? null, this));
+  }
+
+  #countdownStart: number | null = null;
+  countdown: number = -1;
+  updateCountdown() {
+    if (this.#countdownStart) {
+      let d = Date.now() - this.#countdownStart;
+      // logger.info(`countdown from ${this.countdown} to ${this.countdown - d}`);
+      this.countdown -= d;
+      this.#countdownStart += d;
+    }
   }
 
   constructor() {
@@ -87,11 +97,44 @@ export class Room {
   isReady(state: PlayerState) {
     return this.players.every(p => p.online && p.state === state);
   }
+  isFinish() {
+    return this.players.every(p => !p.online || p.state === PlayerState.GameEnd);
+  }
   updateState() {
-    let state = getNewState.call(this);
-    if (state) this.setState(state);
+    if (this.state === RoomState.Locked && this.isReady(PlayerState.Idle))      // 1 -> 2
+      return this.setState(RoomState.Idle);
+    if (this.state === RoomState.Idle && !this.isReady(PlayerState.Idle))       // 2 -> 1
+      return this.setState(RoomState.Locked);
+      
+    // let oldState = this.state;
+    if (this.state === RoomState.NotReady && this.isReady(PlayerState.Ready)) { // 3 -> 4
+      this.countdown = state.common.countdown.ready;
+      this.setState(RoomState.Countdown);
+      this.#countdownStart = Date.now();
+      return;
+    }
+
+    this.updateCountdown();
+    if (this.state === RoomState.Skill && this.countdown < 0) { // 6 -> 7
+      this.countdown = -1;
+      this.#countdownStart = null;
+      this.setState(RoomState.Playing);
+    }
+    if (this.state === RoomState.Countdown && this.countdown < 0) { // 4 -> 5
+      this.clearPrepareInfo();
+      this.broadcast(format11(null, this));
+
+      this.countdown += state.common.countdown.sync;
+      this.setState(RoomState.Syncing);
+    }
+    if (this.state === RoomState.Syncing && (this.countdown < 0 || this.isReady(PlayerState.Synced))) { // 5 -> 6
+      this.countdown += state.common.countdown.skill;
+      this.setState(RoomState.Skill);
+    }
+    // logger.info(`update room: state from ${oldState} to ${this.state}, countdown=${this.countdown}`);
   }
 
+  // 玩家操作
   disconnectPlayer(player: Player) {
     let idx = this.players.indexOf(player);
     if (idx === -1) throw new Error('player not found');
@@ -109,11 +152,11 @@ export class Room {
     let idx = this.players.indexOf(player);
     if (idx === -1) throw new Error('player not found');
 
-    if (this.state === RoomState.NotReady || this.state === RoomState.Countdown) { // 在准备界面时的退出流程
+    if (this.state === RoomState.NotReady) { // 在准备界面时的退出流程
       // 鲨人，尸体清走
       player.destroy();
       this.players.splice(idx, 1);
-      if (!this.players.length) return this.destroy(); // 并不应该出现，但是还是加上吧
+      if (!this.players.length) return this.destroy();
 
       // 给被鲨的人发个 11 包
       let pack11 = format11(null, this);
@@ -140,17 +183,25 @@ export class Room {
     this.updateSongMap();
 
     // 更新房主
-    if (player === this.host)
-      this.setHost(this.players.find(p => p.online) ?? this.players[0]);
+    if (player === this.host) {
+      this.host = this.players.find(p => p.online) ?? this.players[0];
+      if (this.state === RoomState.Countdown) // 这是官服的行为……挺奇怪的
+        this.broadcast(format13(null, this));
+      else
+        this.broadcast(format10(null, this));
+    }
     this.updateState();
   }
-  leavePrepareState(nonce: bigint | null, _pack11?: Buffer) { // 从准备界面回到选曲界面
+  clearPrepareInfo() {
     for (let player of this.players) {
       player.score = 0;
       player.clearType = ClearType.None;
       player.downloadProg = -1;
       // player.difficulty = Difficulty.None; // 理论上应该有这样一个行为，但是 616 没有
     }
+  }
+  leavePrepareState(nonce: bigint | null, _pack11?: Buffer) { // 从准备界面回到选曲界面
+    this.clearPrepareInfo();
     this.state = RoomState.Locked;
     this.songIdxWithDiff = -1;
 
@@ -192,7 +243,7 @@ export class Room {
       return this.#commandQueue.slice(-num);
   }
 
-  // 获取房间信息相关
+  // 房间信息相关
   getPlayersInfoWithName() {
     let playersInfo = [defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName] as Tuple<PlayerInfoWithName, 4>;
     this.players.slice(0, 4).forEach((p, i) => playersInfo[i] = p.getPlayerInfoWithName());
@@ -225,31 +276,53 @@ export class Room {
   }
 };
 
+/*
 // 转移到新状态
-type Rule =
-  { if: PlayerState, then: RoomState } |
-  { ifNot: PlayerState, then: RoomState }
-  ;
+type Rule = (
+  { if: PlayerState } |
+  { ifNot: PlayerState }
+) & ({ then: RoomState | ((room: Room) => void) });
 const rulesMap: Partial<Record<RoomState, Rule[]>> = {
   [RoomState.Locked]: [
-    { if: PlayerState.Idle, then: RoomState.Idle }
+    { if: PlayerState.Idle, then: RoomState.Idle },
   ],
   [RoomState.Idle]: [
-    { ifNot: PlayerState.Idle, then: RoomState.Locked }
+    { ifNot: PlayerState.Idle, then: RoomState.Locked },
   ],
   [RoomState.NotReady]: [
-    { if: PlayerState.Ready, then: RoomState.Countdown }
+    { if: PlayerState.Ready, then: room => room.onCountdownBegin() },
+  ],
+
+  [RoomState.BeforePlay]: [
+
+  ],
+  [RoomState.Countdown]: [
+  ],
+  [RoomState.Syncing]: [
+    { if: PlayerState.Synced, then: RoomState.BeforePlay },
   ],
 };
-function getNewState(this: Room) {
+function getNewState(this: Room): RoomState | void {
+  if (this.state === RoomState.Locked && this.isReady(PlayerState.Idle))
+    return RoomState.Idle;
+
+  if (this.state === RoomState.Idle && !this.isReady(PlayerState.Idle))
+    return RoomState.Locked;
+
+  if (this.state === RoomState.NotReady && this.isReady(PlayerState.Ready))
+    return this.onCountdownBegin();
+
+
+
   let rules = rulesMap[this.state];
-  if (!rules) return null;
+  if (!rules) return;
 
   for (let rule of rules) {
-    if ('if' in rule && this.isReady(rule.if))
-      return rule.then;
-    if ('ifNot' in rule && !this.isReady(rule.ifNot))
-      return rule.then;
+    if ('if' in rule && !this.isReady(rule.if)) continue;
+    if ('ifNot' in rule && this.isReady(rule.ifNot)) continue;
+
+    if (typeof rule.then === 'function') return rule.then(this);
+    return rule.then;
   }
-  return null;
-}
+  return;
+}*/

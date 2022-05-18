@@ -5,7 +5,11 @@ export const key = 'common';
 export const schema = z.object({
   pingInterval: z.number().default(1000), // 返回 0c 包的限速
 
-  countdown: z.number().default(3999), // 启动曲目的倒计时
+  countdown: z.object({
+    ready: z.number().default(3999), // 启动曲目的倒计时
+    sync: z.number().default(9999), // 同步的倒计时
+    skill: z.number().default(2999), // 技能显示的倒计时
+  }).default({}),
   playerTimeout: z.number().default(60e3), // 玩家多少 ms 没有 ping 就自动断连
   songMapLen: z.number().default(512), // orderedAllowedSongs 长度
   packResendSizeLimit: z.number().default(800), // 在包长度总和不超过该值时，补全所有包

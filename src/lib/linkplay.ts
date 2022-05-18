@@ -7,8 +7,8 @@ export enum PlayerState {
   NotReady = 3, // 在准备界面，自己没准备好
   Ready = 4, // 自己准备好了
 
-  Syncing = 5, // 进入游戏，但是在显示技能前
-  Desynced = 6, // 疑似在 Syncing 阶段超过 1.5s 出现
+  Syncing = 5,
+  Synced = 6,
 
   Playing = 7, // 正在游玩
   GameEnd = 8, // 结算或者关门
@@ -21,9 +21,8 @@ export enum RoomState {
   NotReady = 3, // 在准备界面，有人没准备好
   Countdown = 4, // 在准备界面，所有人都准备好了，进入倒计时
 
-  // 似乎是同步时出现的，但是不知道具体含义
-  Unknown5 = 5, // 要我猜的话，5 应该是同步延迟
-  Unknown6 = 6, // 6 应该是倒计时
+  Syncing = 5, // 同步延迟
+  Skill = 6, // 游玩之前的技能展示
 
   Playing = 7, // 正在游玩
   GameEnd = 8, // 结算
@@ -51,14 +50,14 @@ export enum ClearType { // 与正常 ClearType 不同，0 代表不存在
 export const playerInfoSchema = p('playerInfo').struct([
   p('id').u64(),          // [0, 8) Player.id
   p('char').i8(),         // [8]    default -1
-  p('uncapped').bool(),     // [9]
+  p('uncapped').bool(),   // [9]
   p('difficulty').i8(),   // [10]
   p('score').u32(),       // [11, 15)
-  p('timer?').u32(),      // [15, 19)
+  p('songTime').u32(),    // [15, 19)
   p('clearType').u8(),    // [19]
   p('state').u8(),        // [20] getPlayerState = min(state, 4)
   p('downloadProg').i8(), // [21]
-  p('online').bool(),       // [22]
+  p('online').bool(),     // [22]
 ]);
 export type PlayerInfo = typeOf<typeof playerInfoSchema>;
 export const defaultPlayer: PlayerInfo = {
@@ -67,7 +66,7 @@ export const defaultPlayer: PlayerInfo = {
   uncapped: false,
   difficulty: -1,
   score: 0,
-  'timer?': 0,
+  songTime: 0,
   clearType: 0,
   state: 1,
   downloadProg: 0,
@@ -108,6 +107,8 @@ export const roomInfoSchema = p('roomInfo').struct([
   p('countdown').i32(),
   p('serverTime').u64(),
   p('songIdxWithDiff').i16(),
+
+  // 这两个东西是不是被弃用了……
   p('interval?').u16(),
   p('times?').buf(7),
 

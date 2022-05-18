@@ -4,9 +4,10 @@ import { p } from '@/lib/packer';
 import type { PlayerHandler } from '.';
 import { format as format0c } from './responses/0c-ping';
 import { format as format13 } from './responses/13-part-roominfo';
-import { RoomState } from '@/lib/linkplay';
+import { PlayerState, RoomState } from '@/lib/linkplay';
 import { inspect } from 'util';
 import { format as format12 } from './responses/12-player-update';
+import { format as format0e } from './responses/0e-score-update';
 
 export const name = '09-ping';
 export const prefix = Buffer.from('0616090b', 'hex');
@@ -22,6 +23,7 @@ export const schema = p().struct([
   p('state').u8().validate(x => 1 <= x && x <= 8),      // [32]     a4 (MultiplayerSongProgressStage)
 
   p('difficulty').i8().validate(x => x <= 3),           // [33]     a5 准备时和游玩时为当前选择的难度，否则为 -1
+  // ↑ 对，616 没有判 >= 0
   p('clearType').u8().validate(x => 0 <= x && x <= 6),  // [34]     a6 准备时和游玩时为当前的 cleartype + 1，否则为 0 (MultiplayerClearType)
   p('downloadProg').i8(), // [35]     a7 下载进度，没有就是 -1
 
@@ -44,7 +46,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
     return;
   }
 
-  // 首先返回正常 0c 包
+  // 返回正常 0c 包
   if (Date.now() - player.lastPing >= state.common.pingInterval) {
     player.lastPing = Date.now();
     server.send(format0c(clientTime, room), player, true);
@@ -59,6 +61,15 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
       room.broadcast(format12(null, room, room.players.indexOf(player)));
   }
 
-  player.update(data);  // 更新玩家信息
+  player.updateData(data);  // 更新玩家信息
   room.updateState();  // 更新房间信息
 };
+
+export const stringify = (data: typeof schema['type']) => [
+  '[09 ping]',
+  `cnt=${data.counter}`,
+  `state=${data.state}`,
+  `score=${data.score}`,
+  `songTime=${data.songTime}`,
+  `clearType=${data.clearType}`,
+].join(', ');

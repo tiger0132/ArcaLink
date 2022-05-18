@@ -19,8 +19,8 @@ const server = new Server<{ body: Buffer; player: Player }>('player', 4, {
     }
   },
   log(server, parsedMsg) {
-    if (parsedMsg.body[2] !== 0x09)
-      logger.debug(`[${server.name}] ${parsedMsg.player.name}` + ' - ' + stringifyBuf(parsedMsg.body));
+    // if (parsedMsg.body[2] !== 0x09)
+    logger.debug(`[${server.name}] ${parsedMsg.player.name}` + ' - ' + stringifyBuf(parsedMsg.body));
   },
   end(result, remote, server) {
 
