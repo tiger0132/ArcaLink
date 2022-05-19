@@ -20,13 +20,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let { songIdxWithDiff } = data;
   // logger.info(`${player.name.toString().trim()} suggested song ${songIdxWithDiff}`);
 
-  if (room.canPlayDiff(songIdxWithDiff) === 'invalid')
-    return;
-  if (
-    room.canPlayDiff(songIdxWithDiff) === 'locked' &&
-    state.common.ignoreLockedIdx
-  )
-    return;
+  if (room.canPlayDiff(songIdxWithDiff) === 'invalid') return;
 
   let pack0f = format0f(room, player, songIdxWithDiff);
   for (let p of room.players)

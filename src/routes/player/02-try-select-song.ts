@@ -24,7 +24,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { nonce, songIdxWithDiff } = data;
-  let [idx, diff] = getDiffPair(songIdxWithDiff);
+  // let [idx, diff] = getDiffPair(songIdxWithDiff);
   // logger.info(`${player.name.toString().trim()} selected idx ${idx}`);
   // logger.info(`${room.songMap[idx >> 1].toString(2).padStart(8, '0').split('').reverse().join('')}`);
   // logger.info(`${room.players.map(x => x.songMap[idx >> 1].toString(2).padStart(8, '0').split('').reverse().join('')).join(', ')}`);

@@ -1,4 +1,5 @@
 import Koa from 'koa';
+import _ from 'lodash-es';
 import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 
@@ -10,6 +11,7 @@ import { format as format11 } from '../player/responses/11-players-info';
 import { format as format13 } from '../player/responses/13-part-roominfo';
 import { format as format14 } from '../player/responses/14-songmap-update';
 import { z } from 'zod';
+import { parseSongMap } from '@/lib/utils';
 
 const app = new Koa();
 const router = new Router();
@@ -17,7 +19,7 @@ const router = new Router();
 app.use(bodyParser());
 app.use(async (ctx, next) => {
   try {
-    logger.info(`${ctx.ip} ${ctx.method} ${ctx.url} ${JSON.stringify(ctx.request.body)}`);
+    logger.info(`${ctx.ip} ${ctx.method} ${ctx.url} ${JSON.stringify(ctx.request.body, (k, v) => k === 'songMap' ? undefined : v)}`);
     await next();
   } catch (e) {
     logger.error(e);
@@ -40,7 +42,7 @@ const schema = z.object({
   userId: z.number(),
   char: z.number(),
   uncapped: z.boolean(),
-  songMap: z.string().refine(x => x.length === state.common.songMapLen * 2),
+  songMap: z.record(z.string(), z.tuple([z.boolean(), z.boolean(), z.boolean(), z.boolean()])),
 });
 
 router.post('/multiplayer/room/create', async ctx => {
@@ -50,9 +52,7 @@ router.post('/multiplayer/room/create', async ctx => {
   let { key, name, userId, char, uncapped, songMap: _songMap } = parsed.data;
   if (key !== config.server.key) throw 'invalid key';
 
-  let songMap = Buffer.from(_songMap, 'hex');
-  if (songMap.length !== state.common.songMapLen) throw 'invalid song map';
-
+  let [songMap, songMap2] = parseSongMap(_songMap);
   let room = new Room();
 
   let player = manager.playerUidMap.get(userId);
@@ -62,10 +62,11 @@ router.post('/multiplayer/room/create', async ctx => {
   // 官服行为，但是其实 key 想是啥就是啥
   // let player = new Player(room, Buffer.from(name), userId, char, room.id, songMap);
 
-  player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
+  player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap, songMap2);
   room.addPlayer(player);
   room.host = player;
   room.songMap = songMap;
+  room.songMap2 = songMap2;
 
   // 根据官服在 counter = 0 时直接补 15 包的行为，推测 counter = 1 的包也是 15（因为足够大）
   // 所以无论如何它不会被发送，于是直接排除在队列之外
@@ -95,9 +96,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let { key, name, userId, char, uncapped, songMap: _songMap } = parsed.data;
   if (key !== config.server.key) throw 'invalid key';
 
-  let songMap = Buffer.from(_songMap, 'hex');
-  if (songMap.length !== state.common.songMapLen) throw 'invalid song map';
-
+  let [songMap, songMap2] = parseSongMap(_songMap);
   let code = ctx.params.code;
   let room = manager.roomCodeMap.get(code);
   if (!room) throw 1202;
@@ -115,7 +114,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
     if (idx === -1) throw 'player not found';
     oldPlayer.destroy();
 
-    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
+    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap, songMap2);
     room.players[idx] = player;
     manager.udpServer.send(pack11 = format11(null, room), oldPlayer);
 
@@ -136,7 +135,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   } else {
     if (player)
       player.room.removePlayer(player);
-    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
+    player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap, songMap2);
     room.addPlayer(player);
   }
 

@@ -15,6 +15,7 @@ export class Room {
   players: (Player | null)[] = [null, null, null, null];
   playerCnt: number = 0;
   songMap: Buffer;
+  songMap2: Buffer;
 
   counter: number = 0;
 
@@ -65,6 +66,7 @@ export class Room {
     this.id = manager.randomID();
     this.code = manager.randomCode();
     this.songMap = Buffer.alloc(state.common.songMapLen);
+    this.songMap2 = Buffer.alloc((state.common.songMapLen + 7) >> 3);
 
     manager.roomCodeMap.set(this.code, this);
     manager.roomIdMap.set(this.idU64, this);
@@ -72,25 +74,28 @@ export class Room {
   updateSongMap(nonce?: bigint, force?: true) {
     let oldSongMap = Buffer.from(this.songMap);
     this.songMap.fill(0xFF);
+    this.songMap2.fill(0xFF);
     this.players.forEach(p => {
       if (!p) return;
       for (let i = 0; i < state.common.songMapLen; i++)
         this.songMap[i] &= p.songMap[i];
+      for (let i = 0; i < ((state.common.songMapLen + 7) >> 3); i++)
+        this.songMap2[i] &= p.songMap2[i];
     });
     if (force || !oldSongMap.equals(this.songMap))
       this.broadcast(format14(nonce ?? null, this));
   }
-  canPlayDiff(songIdxWithDiff: number) {
-    if (songIdxWithDiff < 0 || songIdxWithDiff >= state.common.songMapLen * 8)
+  canPlayDiff(songIdxWithDiff: number) { // invalid: 不合法或者有人 slst 里没有；locked: 所有人都有，但是有人锁住了；ok: 都可以游玩
+    if (!this.canSelectSong(songIdxWithDiff >> 2))
       return 'invalid';
     let i = songIdxWithDiff >> 3, j = songIdxWithDiff & 7;
     return (this.songMap[i] >> j) & 1 ? 'ok' : 'locked';
   }
-  canPlaySong(songIdx: number) {
-    if (songIdx < 0 || songIdx >= state.common.songMapLen * 2)
-      return 'invalid';
-    let i = songIdx >> 1, j = songIdx & 1;
-    return (this.songMap[i] >> (j * 4)) & 0xF ? 'ok' : 'locked';
+  canSelectSong(songIdx: number) {
+    if (songIdx < 0 || songIdx >= state.common.songMapLen)
+      return false;
+    let i = songIdx >> 3, j = songIdx & 7;
+    return !!((this.songMap2[i] >> j) & 1);
   }
   isAllOnline() {
     return this.players.every(p => !p || p.online);

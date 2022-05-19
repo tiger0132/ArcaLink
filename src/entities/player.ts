@@ -28,6 +28,9 @@ export class Player {
   token: Buffer;      // buf(8) (u64)
   key: Buffer;        // buf(16)
   songMap: Buffer;    // buf(512 <- state.common.songMapLen)
+  
+  // 私货：用于在 02 和 0b 包中过滤掉部分玩家没有的歌
+  songMap2: Buffer;   // buf(64 <- state.common.songMapLen / 8)
 
   char: number = -1;
   uncapped: boolean = false;
@@ -63,7 +66,8 @@ export class Player {
     char: number,
     uncapped: boolean,
     token: Buffer | null,
-    songMap: Buffer
+    songMap: Buffer,
+    songMap2: Buffer,
   ) {
     this.name = name.slice(0, 16);
     if (this.name.length < 16)
@@ -76,6 +80,7 @@ export class Player {
     this.token = token ?? manager.randomToken();
     this.key = crypto.randomBytes(16);
     this.songMap = songMap;
+    this.songMap2 = songMap2;
 
     this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.timeout.normal);
 
@@ -105,7 +110,7 @@ export class Player {
     manager.playerUidMap.delete(this.userId);
     clearTimeout(this.#disconnectTimer);
 
-    logger.debug(`Player destroyed: ${this.playerId} (uid=${this.userId})`);
+    logger.info(`Player destroyed: ${this.playerId} (uid=${this.userId})`);
   }
 
   getPlayerInfo(): PlayerInfo {

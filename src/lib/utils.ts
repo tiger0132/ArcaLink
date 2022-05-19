@@ -38,19 +38,23 @@ export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
   return Buffer.concat([token, iv, authTag, encrypted, final]);
 }
 
-export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean, boolean]>) {
+export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean, boolean]>): [Buffer, Buffer] {
+  let len = (state.common.songMapLen + 7) >> 3;
   let result = Buffer.alloc(state.common.songMapLen);
+  let result2 = Buffer.alloc(len);
   for (let i in songMap) {
     let song = songMap[i];
     let idx = parseInt(i, 10);
+    if (idx >= state.common.songMapLen || idx < 0) continue;
     let val = 0;
     val |= (song[0] ? 1 : 0) << 0;
     val |= (song[1] ? 1 : 0) << 1;
     val |= (song[2] ? 1 : 0) << 2;
     val |= (song[3] ? 1 : 0) << 3;
     result[idx >> 1] |= val << ((idx & 1) ? 4 : 0);
+    result2[idx >> 3] |= 1 << (idx & 7);
   }
-  return result;
+  return [result, result2];
 }
 
 export function toHex(buf: Buffer) {
