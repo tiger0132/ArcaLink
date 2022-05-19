@@ -57,8 +57,18 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   if (!player.online) {
     player.online = true;
 
-    if (room.players.length > 1) // 如果不止一个人，那么发一个 12 包
+    if (room.playerCnt > 1) // 如果不止一个人，那么发一个 12 包
       room.broadcast(format12(null, room, room.players.indexOf(player)));
+  }
+
+  // 更新分数
+  if (room.state >= RoomState.Playing && player.songTime !== data.songTime) {
+    player.lastScore = player.score;
+    player.lastSongTime = player.songTime;
+    player.songTime = data.songTime;
+    player.score = data.score;
+
+    room.broadcast(format0e(room, player));
   }
 
   player.updateData(data);  // 更新玩家信息

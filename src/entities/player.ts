@@ -44,7 +44,6 @@ export class Player {
   lastSongTime: number = 0;
 
   lastPlay?: ScoreInfo;
-
   personalBest: boolean = false;
   top: boolean = false;
 
@@ -78,17 +77,23 @@ export class Player {
     this.key = crypto.randomBytes(16);
     this.songMap = songMap;
 
-    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.playerTimeout);
+    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.timeout.normal);
 
     manager.playerTokenMap.set(this.tokenU64, this);
     manager.playerUidMap.set(this.userId, this);
   }
   disconnect() {
+    logger.info('Disconnect player: ' + this.playerId);
     if (this.online) {
       this.room.disconnectPlayer(this);
-      this.refreshTimer();
+      if (this.room.state !== RoomState.Playing)
+        this.refreshTimer();
     } else
       this.room.removePlayer(this);
+  }
+  resetTimer(mode: 'normal' | 'playing') {
+    clearTimeout(this.#disconnectTimer);
+    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.timeout[mode]);
   }
   refreshTimer() {
     this.#disconnectTimer.refresh();
@@ -126,14 +131,14 @@ export class Player {
   getLastScore(): PlayerScore {
     return {
       ...(this.lastPlay ?? defaultScore),
-      persenalBest: this.personalBest,
+      personalBest: this.personalBest,
       top: this.top,
     };
   }
 };
 
 type Keys = keyof typeOf<typeof clientPingSchema> & keyof Player;
-type Fn<T extends Keys> = (x: typeOf<typeof clientPingSchema>[T]) => null | typeOf<typeof clientPingSchema>[T];
+type Fn<T extends Keys> = (x: typeOf<typeof clientPingSchema>[T]) => boolean;
 type UpdateRule<T extends Keys> = Readonly<
   [T] |
   [T, Fn<T>] |
@@ -162,12 +167,10 @@ function update(this: Player, data: typeOf<typeof clientPingSchema>) {
       fn = rule[2] as Fn<Keys>;
     } else
       fn = rule[1] as Fn<Keys>;
+    if (fn && !fn(data[key])) continue;
 
-    let result: unknown = data[key];
-    if (fn && (result = fn(data[key])) === null) continue;
-
-    logger.info(`update ${this.name.toString().trim()}: ${key} from ${this[key]} to ${result}`);
-    (this as any)[key] = result;
+    // logger.debug(`update ${this.name.toString().trim()}: ${key} from ${this[key]} to ${data[key]}`);
+    (this as any)[key] = data[key];
     flag12 = true;
   }
   if (flag12)

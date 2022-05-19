@@ -12,7 +12,8 @@ import { format as format11 } from '@/routes/player/responses/11-players-info';
 export class Room {
   id: Buffer;
   code: string;
-  players: Player[];
+  players: (Player | null)[] = [null, null, null, null];
+  playerCnt: number = 0;
   songMap: Buffer;
 
   counter: number = 0;
@@ -63,7 +64,6 @@ export class Room {
   constructor() {
     this.id = manager.randomID();
     this.code = manager.randomCode();
-    this.players = [];
     this.songMap = Buffer.alloc(state.common.songMapLen);
 
     manager.roomCodeMap.set(this.code, this);
@@ -73,6 +73,7 @@ export class Room {
     let oldSongMap = Buffer.from(this.songMap);
     this.songMap.fill(0xFF);
     this.players.forEach(p => {
+      if (!p) return;
       for (let i = 0; i < state.common.songMapLen; i++)
         this.songMap[i] &= p.songMap[i];
     });
@@ -92,21 +93,16 @@ export class Room {
     return (this.songMap[i] >> (j * 4)) & 0xF ? 'ok' : 'locked';
   }
   isAllOnline() {
-    return this.players.every(p => p.online);
+    return this.players.every(p => !p || p.online);
   }
-  isReady(state: PlayerState) {
-    return this.players.every(p => p.online && p.state === state);
-  }
-  isFinish() {
-    return this.players.every(p => !p.online || p.state === PlayerState.GameEnd);
+  isReady(state: PlayerState, canOffline: boolean = false) { // 是否所有玩家都在特定 state
+    return this.players.every(p => !p || (!p.online && canOffline) || (p.online && p.state === state));
   }
   updateState() {
     if (this.state === RoomState.Locked && this.isReady(PlayerState.Idle))      // 1 -> 2
       return this.setState(RoomState.Idle);
     if (this.state === RoomState.Idle && !this.isReady(PlayerState.Idle))       // 2 -> 1
       return this.setState(RoomState.Locked);
-      
-    // let oldState = this.state;
     if (this.state === RoomState.NotReady && this.isReady(PlayerState.Ready)) { // 3 -> 4
       this.countdown = state.common.countdown.ready;
       this.setState(RoomState.Countdown);
@@ -115,26 +111,76 @@ export class Room {
     }
 
     this.updateCountdown();
-    if (this.state === RoomState.Skill && this.countdown < 0) { // 6 -> 7
-      this.countdown = -1;
-      this.#countdownStart = null;
-      this.setState(RoomState.Playing);
-    }
-    if (this.state === RoomState.Countdown && this.countdown < 0) { // 4 -> 5
-      this.clearPrepareInfo();
-      this.broadcast(format11(null, this));
+    if (RoomState.Countdown <= this.state && this.state <= RoomState.Skill) { // state 4, 5, 6 handling
+      if (this.state === RoomState.Skill && this.countdown < 0) { // 6 -> 7
+        for (let p of this.players)
+          if (p) p.resetTimer('playing');
+        this.countdown = -1;
+        this.#countdownStart = null;
+        this.setState(RoomState.Playing);
+      }
+      if (this.state === RoomState.Countdown && this.countdown < 0) { // 4 -> 5
+        this.clearPrepareInfo();
+        this.broadcast(format11(null, this));
 
-      this.countdown += state.common.countdown.sync;
-      this.setState(RoomState.Syncing);
+        this.countdown += state.common.countdown.sync;
+        this.setState(RoomState.Syncing);
+      }
+      if (this.state === RoomState.Syncing && (this.countdown < 0 || this.isReady(PlayerState.Synced))) { // 5 -> 6
+        this.countdown += state.common.countdown.skill;
+        this.setState(RoomState.Skill);
+      }
+      return;
     }
-    if (this.state === RoomState.Syncing && (this.countdown < 0 || this.isReady(PlayerState.Synced))) { // 5 -> 6
-      this.countdown += state.common.countdown.skill;
-      this.setState(RoomState.Skill);
+
+    if (this.state === RoomState.Playing && this.isReady(PlayerState.GameEnd, true)) // 7 -> 8
+      return this.makeFinish();
+    if (this.state === RoomState.GameEnd && this.isReady(PlayerState.Idle, true)) { // 8 -> 1
+      this.songIdxWithDiff = -1;
+      this.clearPrepareInfo();
+      if (this.roundRobin) {
+        let idx = this.players.indexOf(this.#host);
+        while (!this.players[idx = (idx + 1) % 4]);
+        this.host = this.players[idx]!;
+      }
+      return this.setState(RoomState.Locked);
     }
-    // logger.info(`update room: state from ${oldState} to ${this.state}, countdown=${this.countdown}`);
+  }
+  makeFinish() { // 结算
+    for (let p of this.players)
+      if (!p) { }
+      else if (p.online)
+        p.resetTimer('normal');
+      else
+        this.removePlayer(p);
+
+    this.lastSong = this.songIdxWithDiff;
+
+    let topScore = -Infinity;
+    for (let p of this.players) {
+      if (!p) continue;
+      p.lastPlay = {
+        difficulty: p.difficulty,
+        score: p.score,
+        char: p.char,
+        clearType: p.clearType,
+      };
+      p.top = false;
+      topScore = Math.max(topScore, p.score);
+    }
+    for (let p of this.players)
+      if (p && p.score === topScore) p.top = true;
+
+    this.setState(RoomState.GameEnd); // 20s
   }
 
   // 玩家操作
+  addPlayer(player: Player) {
+    let idx = this.players.indexOf(null);
+    if (idx < 0) throw new Error('room is full');
+    this.players[idx] = player;
+    this.playerCnt++;
+  }
   disconnectPlayer(player: Player) {
     let idx = this.players.indexOf(player);
     if (idx === -1) throw new Error('player not found');
@@ -143,7 +189,7 @@ export class Room {
     this.broadcast(format12(null, this, idx));
 
     if (player === this.host) {
-      let host = this.players.find(p => p.online);
+      let host = this.players.find(p => p && p.online);
       if (host) this.setHost(host);
     }
     this.updateState();
@@ -155,8 +201,9 @@ export class Room {
     if (this.state === RoomState.NotReady) { // 在准备界面时的退出流程
       // 鲨人，尸体清走
       player.destroy();
-      this.players.splice(idx, 1);
-      if (!this.players.length) return this.destroy();
+      this.players[idx] = null;
+      this.playerCnt--;
+      if (!this.playerCnt) return this.destroy();
 
       // 给被鲨的人发个 11 包
       let pack11 = format11(null, this);
@@ -164,7 +211,10 @@ export class Room {
 
       // 更新房主，但是不发 10 包
       if (player === this.host)
-        this.#host = this.players.find(p => p.online) ?? this.players[0];
+        this.#host =
+          this.players.find(p => p && p.online) ??
+          this.players.find(p => p) ??
+          this.players[0];
 
       // 进入一般退出准备界面流程
       this.leavePrepareState(null, pack11);
@@ -176,16 +226,20 @@ export class Room {
     this.broadcast(format12(null, this, idx, defaultPlayer));
 
     // 尸体清走
-    this.players.splice(idx, 1);
-    if (!this.players.length) return this.destroy();
+    this.players[idx] = null;
+    this.playerCnt--;
+    if (!this.playerCnt) return this.destroy();
 
     // 更新 songMap，广播 14 包
     this.updateSongMap();
 
     // 更新房主
     if (player === this.host) {
-      this.host = this.players.find(p => p.online) ?? this.players[0];
-      if (this.state === RoomState.Countdown) // 这是官服的行为……挺奇怪的
+      this.#host =
+        this.players.find(p => p && p.online) ??
+        this.players.find(p => p) ??
+        this.players[0];
+      if (this.state >= RoomState.Countdown) // 这是官服的行为……挺奇怪的
         this.broadcast(format13(null, this));
       else
         this.broadcast(format10(null, this));
@@ -193,11 +247,14 @@ export class Room {
     this.updateState();
   }
   clearPrepareInfo() {
-    for (let player of this.players) {
-      player.score = 0;
-      player.clearType = ClearType.None;
-      player.downloadProg = -1;
+    for (let p of this.players) {
+      if (!p) continue;
+      p.score = 0;
+      p.clearType = ClearType.None;
+      p.downloadProg = -1;
       // player.difficulty = Difficulty.None; // 理论上应该有这样一个行为，但是 616 没有
+
+      p.lastScore = p.lastSongTime = 0;
     }
   }
   leavePrepareState(nonce: bigint | null, _pack11?: Buffer) { // 从准备界面回到选曲界面
@@ -211,7 +268,7 @@ export class Room {
     manager.roomCodeMap.delete(this.code);
     manager.roomIdMap.delete(this.idU64);
 
-    this.players.forEach(p => p.destroy());
+    this.players.forEach(p => p && p.destroy());
     this.players = [];
 
     logger.info('Room destroyed: ' + this.code);
@@ -222,7 +279,7 @@ export class Room {
     for (let pack of packs)
       if (pack)
         for (let p of this.players)
-          if (p.online)
+          if (p && p.online)
             manager.udpServer.send(pack, p);
   }
   pushPack(pack: Buffer) {
@@ -245,14 +302,10 @@ export class Room {
 
   // 房间信息相关
   getPlayersInfoWithName() {
-    let playersInfo = [defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName, defaultPlayerWithName] as Tuple<PlayerInfoWithName, 4>;
-    this.players.slice(0, 4).forEach((p, i) => playersInfo[i] = p.getPlayerInfoWithName());
-    return playersInfo;
+    return this.players.map(p => p ? p.getPlayerInfoWithName() : defaultPlayerWithName) as Tuple<PlayerInfoWithName, 4>;
   }
   getLastScores() {
-    let lastScores = [defaultScore, defaultScore, defaultScore, defaultScore] as Tuple<PlayerScore, 4>;
-    this.players.slice(0, 4).forEach((p, i) => lastScores[i] = p.getLastScore());
-    return lastScores;
+    return this.players.map(p => p ? p.getLastScore() : defaultScore) as Tuple<PlayerScore, 4>;
   }
   getRoomInfo(): RoomInfo {
     return {
@@ -275,54 +328,3 @@ export class Room {
     };
   }
 };
-
-/*
-// 转移到新状态
-type Rule = (
-  { if: PlayerState } |
-  { ifNot: PlayerState }
-) & ({ then: RoomState | ((room: Room) => void) });
-const rulesMap: Partial<Record<RoomState, Rule[]>> = {
-  [RoomState.Locked]: [
-    { if: PlayerState.Idle, then: RoomState.Idle },
-  ],
-  [RoomState.Idle]: [
-    { ifNot: PlayerState.Idle, then: RoomState.Locked },
-  ],
-  [RoomState.NotReady]: [
-    { if: PlayerState.Ready, then: room => room.onCountdownBegin() },
-  ],
-
-  [RoomState.BeforePlay]: [
-
-  ],
-  [RoomState.Countdown]: [
-  ],
-  [RoomState.Syncing]: [
-    { if: PlayerState.Synced, then: RoomState.BeforePlay },
-  ],
-};
-function getNewState(this: Room): RoomState | void {
-  if (this.state === RoomState.Locked && this.isReady(PlayerState.Idle))
-    return RoomState.Idle;
-
-  if (this.state === RoomState.Idle && !this.isReady(PlayerState.Idle))
-    return RoomState.Locked;
-
-  if (this.state === RoomState.NotReady && this.isReady(PlayerState.Ready))
-    return this.onCountdownBegin();
-
-
-
-  let rules = rulesMap[this.state];
-  if (!rules) return;
-
-  for (let rule of rules) {
-    if ('if' in rule && !this.isReady(rule.if)) continue;
-    if ('ifNot' in rule && this.isReady(rule.ifNot)) continue;
-
-    if (typeof rule.then === 'function') return rule.then(this);
-    return rule.then;
-  }
-  return;
-}*/

@@ -19,8 +19,8 @@ const server = new Server<{ body: Buffer; player: Player }>('player', 4, {
     }
   },
   log(server, parsedMsg) {
-    // if (parsedMsg.body[2] !== 0x09)
-    logger.debug(`[${server.name}] ${parsedMsg.player.name}` + ' - ' + stringifyBuf(parsedMsg.body));
+    if (parsedMsg.body[2] !== 0x09)
+      logger.debug(`[${server.name}] ${parsedMsg.player.name}` + ' - ' + stringifyBuf(parsedMsg.body));
   },
   end(result, remote, server) {
 
@@ -30,7 +30,7 @@ const server = new Server<{ body: Buffer; player: Player }>('player', 4, {
 const routes: ServerRoute<typeof server>[] = await Promise.all([
   import('./01-try-give-host'),
   import('./02-try-select-song'),
-  // import('./03-song-finish'),
+  import('./03-song-finish'),
   import('./04-try-kick-player'),
   // import('./05-wtf-is-this'),
   import('./06-return-to-lobby'),

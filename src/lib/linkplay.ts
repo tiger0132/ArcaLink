@@ -89,7 +89,7 @@ export const playerScoreSchema = p().struct([
   p('difficulty').i8(),   // [1]
   p('score').u32(),       // [2, 6)
   p('clearType').u8(),    // [6]
-  p('persenalBest').bool(), // [7]
+  p('personalBest').bool(), // [7]
   p('top').bool(),          // [8]
 ]);
 export type PlayerScore = typeOf<typeof playerScoreSchema>;
@@ -98,7 +98,7 @@ export const defaultScore: PlayerScore = {
   difficulty: -1,
   score: 0,
   clearType: 0,
-  persenalBest: false,
+  personalBest: false,
   top: false,
 } as const;
 

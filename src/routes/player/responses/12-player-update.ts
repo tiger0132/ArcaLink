@@ -1,5 +1,5 @@
 import { Room } from '@/entities/room';
-import { playerInfoSchema } from '@/lib/linkplay';
+import { defaultPlayer, playerInfoSchema } from '@/lib/linkplay';
 import { p, typeOf } from '@/lib/packer';
 import { randomUInt } from '@/lib/utils';
 import util from 'util';
@@ -26,7 +26,7 @@ export const format = (
     nonce: nonce ?? randomUInt(),
 
     playerIndex,
-    playerInfo: playerInfo ?? room.players[playerIndex].getPlayerInfo(),
+    playerInfo: playerInfo ?? room.players[playerIndex]?.getPlayerInfo() ?? defaultPlayer,
   });
   room.pushPack(pack);
   return pack;

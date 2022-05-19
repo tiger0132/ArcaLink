@@ -34,7 +34,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
       throw InGameError.NotHost;
     if (room.state !== RoomState.Idle)
       throw InGameError.CannotStart;
-    if (room.players.length < 2)
+    if (room.playerCnt < 2)
       throw InGameError.NeedMorePlayers;
     if (room.canPlayDiff(songIdxWithDiff) !== 'ok')
       throw InGameError.CannotPlaySong;

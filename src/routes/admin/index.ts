@@ -63,7 +63,7 @@ router.post('/multiplayer/room/create', async ctx => {
   // let player = new Player(room, Buffer.from(name), userId, char, room.id, songMap);
 
   player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
-  room.players = [player];
+  room.addPlayer(player);
   room.host = player;
   room.songMap = songMap;
 
@@ -101,7 +101,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let code = ctx.params.code;
   let room = manager.roomCodeMap.get(code);
   if (!room) throw 1202;
-  if (room.players.length === 4) throw 1201;
+  if (room.playerCnt === 4) throw 1201;
   if (room.state > RoomState.Idle) throw 1205; // FIXME: 其实不知道 GameEnd state 可不可以，还没试过
 
   let player = manager.playerUidMap.get(userId);
@@ -137,7 +137,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
     if (player)
       player.room.removePlayer(player);
     player = new Player(room, Buffer.from(name), userId, char, uncapped, null, songMap);
-    room.players.push(player);
+    room.addPlayer(player);
   }
 
   room.broadcast(pack11 ?? format11(null, room)); // 发一个 11 包

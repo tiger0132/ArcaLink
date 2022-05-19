@@ -22,7 +22,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   try {
     if (room.host !== player) throw InGameError.NotHost;
 
-    let target = room.players.find(p => p.playerId === id);
+    let target = room.players.find(p => p && p.playerId === id);
     // 你知道吗：房主是可以踢掉自己的
 
     if (!target) throw 2; // 踢了不存在的人

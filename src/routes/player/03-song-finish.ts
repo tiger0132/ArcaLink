@@ -2,6 +2,7 @@ import { PlayerState } from '@/lib/linkplay';
 import { p } from '@/lib/packer';
 
 import type { PlayerHandler } from '.';
+import { format as format0d } from './responses/0d-send-error';
 import { format as format12 } from './responses/12-player-update';
 
 export const name = '03-song-finish';
@@ -24,17 +25,23 @@ export const schema = p().struct([
 export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
+  let { nonce } = data;
 
-  player.state = PlayerState.GameEnd;
+  try {
+    if (player.state !== PlayerState.Playing)
+      throw 1;
 
-  player.score = data.score;
-  player.clearType = data.clearType;
-  player.difficulty = data.difficulty;
-  player.personalBest = data.personalBest;
+    player.state = PlayerState.GameEnd;
 
-  room.broadcast(format12(data.nonce, room, room.players.indexOf(player)));
-  if (room.isFinish()) {
-    
+    player.score = data.score;
+    player.clearType = data.clearType;
+    player.difficulty = data.difficulty;
+    player.personalBest = data.personalBest;
+
+    room.broadcast(format12(nonce, room, room.players.indexOf(player)));
+  } catch (e) {
+    if (typeof e === 'number')
+      server.send(format0d(nonce, room, e), player);
   }
 };
 

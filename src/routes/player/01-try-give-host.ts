@@ -20,11 +20,11 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   let [data] = schema.parse(body);
   let { room } = player;
   let { nonce, id } = data;
-  
+
   try {
     if (room.host !== player) throw InGameError.NotHost;
 
-    let host = room.players.find(p => p.playerId === id);
+    let host = room.players.find(p => p && p.playerId === id);
     // 你知道吗：房主是可以给自己房主的
 
     if (!host) throw 1; // 给了不存在的人

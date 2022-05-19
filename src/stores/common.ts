@@ -10,7 +10,10 @@ export const schema = z.object({
     sync: z.number().default(9999), // 同步的倒计时
     skill: z.number().default(2999), // 技能显示的倒计时
   }).default({}),
-  playerTimeout: z.number().default(60e3), // 玩家多少 ms 没有 ping 就自动断连
+  timeout: z.object({
+    normal: z.number().default(60e3), // 正常情况的超时时间
+    playing: z.number().default(15e3), // 游戏中的超时时间
+  }).default({}),
   songMapLen: z.number().default(512), // orderedAllowedSongs 长度
   packResendSizeLimit: z.number().default(800), // 在包长度总和不超过该值时，补全所有包
 
