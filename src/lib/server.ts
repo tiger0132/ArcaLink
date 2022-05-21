@@ -33,8 +33,11 @@ export class Server<
     this.end = end;
   }
   register(route: Route<T, U>) {
-    if (route.prefix.length === this.prefixSize) {
-      this.routeMap.set(route.prefix.slice(0, -1).toString('binary'), route.handler);
+    let prefix = route.prefix;
+    if (prefix.length === this.prefixSize) {
+      if (config.server.allowDifferentVersion)
+        prefix = prefix.slice(0, -1);
+      this.routeMap.set(prefix.toString('binary'), route.handler);
       logger.info(`Register route: "${this.name}/${route.name}" (${toHex(route.prefix)})`);
     } else
       logger.error(`Route: "${route.name}"'s prefix (${toHex(route.prefix)}) length is not ${this.prefixSize}`);
@@ -49,8 +52,10 @@ export class Server<
       this.log(this, parsedMsg);
       // logger.debug(`[${this.name}] ` + remote.address + ':' + remote.port + ' - ' + stringifyBuf(parsedMsg.body));
 
-      let prefix = parsedMsg.body.slice(0, this.prefixSize).slice(0, -1).toString('binary');
-      let route = this.routeMap.get(prefix);
+      let prefix = parsedMsg.body.slice(0, this.prefixSize);
+      if (config.server.allowDifferentVersion)
+        prefix = prefix.slice(0, -1);
+      let route = this.routeMap.get(prefix.toString('binary'));
       if (!route) {
         logger.warn(`[${this.name}] Unknown command from ${remote.address}:${remote.port}: ${stringifyBuf(parsedMsg.body)}.`);
         return;

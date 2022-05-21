@@ -15,6 +15,8 @@ export interface Config {
     pingInterval: number;
     packResendSizeLimit: number;
     songMapLen: number;
+
+    allowDifferentVersion: boolean;
   };
   gameplay: {
     countdown: {
@@ -45,6 +47,8 @@ const config: Config = {
     pingInterval: 1000, // 返回 0c 包的限速
     packResendSizeLimit: 800, // 在包长度总和不超过该值时，补全所有包
     songMapLen: 512, // orderedAllowedSongs 长度
+
+    allowDifferentVersion: true, // 允许不同版本的客户端；如 3.12.6 版本的 protocolVersion 为 09，而这里实现的版本是 0b
   },
   gameplay: {
     countdown: {
