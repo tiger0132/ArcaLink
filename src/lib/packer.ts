@@ -1,7 +1,5 @@
 /*
-fk ts
-
-typing 写起来太恶心了
+不会 ts = =
 希望有人能帮忙补个阳间的 typing
 PRs welcome
 */
@@ -239,7 +237,6 @@ class FieldWrapper<Name extends string> {
 };
 
 /*
-傻逼语言，
 new FieldWrapper(name.length ? name[0] ?? '' : ''); 给我报错
 new FieldWrapper(0 in name ? name[0] ?? '' : ''); 也给我报错
 */

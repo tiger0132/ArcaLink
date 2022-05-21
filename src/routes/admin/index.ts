@@ -101,7 +101,7 @@ router.post('/multiplayer/room/join/:code', async ctx => {
   let room = manager.roomCodeMap.get(code);
   if (!room) throw 1202;
   if (room.playerCnt === 4) throw 1201;
-  if (room.state > RoomState.Idle) throw 1205; // FIXME: 其实不知道 GameEnd state 可不可以，还没试过
+  if (room.state > RoomState.Idle) throw 1205;
 
   let player = manager.playerUidMap.get(userId);
   let pack11;
