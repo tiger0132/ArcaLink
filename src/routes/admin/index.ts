@@ -19,10 +19,10 @@ const router = new Router();
 app.use(bodyParser());
 app.use(async (ctx, next) => {
   try {
-    logger.info(`${ctx.ip} ${ctx.method} ${ctx.url} ${JSON.stringify(ctx.request.body, (k, v) => k === 'songMap' ? undefined : v)}`);
+    adminLogger.info(`${ctx.ip} ${ctx.method} ${ctx.url} ${JSON.stringify(ctx.request.body, (k, v) => k === 'songMap' ? undefined : v)}`);
     await next();
   } catch (e) {
-    logger.error(e);
+    adminLogger.error(e);
     if (typeof e === 'number') {
       ctx.status = 403;
       ctx.body = { success: false, error_code: e };

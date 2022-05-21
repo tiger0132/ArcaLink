@@ -27,10 +27,10 @@ export class Player {
   userId: number;     // u32
   token: Buffer;      // buf(8) (u64)
   key: Buffer;        // buf(16)
-  songMap: Buffer;    // buf(512 <- state.common.songMapLen)
+  songMap: Buffer;    // buf(512 <- config.server.songMapLen)
   
   // 私货：用于在 02 和 0b 包中过滤掉部分玩家没有的歌
-  songMap2: Buffer;   // buf(64 <- state.common.songMapLen / 8)
+  songMap2: Buffer;   // buf(64 <- config.server.songMapLen / 8)
 
   char: number = -1;
   uncapped: boolean = false;
@@ -82,7 +82,7 @@ export class Player {
     this.songMap = songMap;
     this.songMap2 = songMap2;
 
-    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.timeout.normal);
+    this.#disconnectTimer = setTimeout(() => this.disconnect(), config.gameplay.timeout.normal);
 
     manager.playerTokenMap.set(this.tokenU64, this);
     manager.playerUidMap.set(this.userId, this);
@@ -98,7 +98,7 @@ export class Player {
   }
   resetTimer(mode: 'normal' | 'playing') {
     clearTimeout(this.#disconnectTimer);
-    this.#disconnectTimer = setTimeout(() => this.disconnect(), state.common.timeout[mode]);
+    this.#disconnectTimer = setTimeout(() => this.disconnect(), config.gameplay.timeout[mode]);
   }
   refreshTimer() {
     this.#disconnectTimer.refresh();

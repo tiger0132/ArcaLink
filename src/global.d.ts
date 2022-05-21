@@ -10,6 +10,5 @@ declare global {
   var adminLogger: winston.Logger;
 
   var config: Config;
-  var state: State;
   var manager: LinkPlayManager;
 }

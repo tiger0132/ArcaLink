@@ -65,8 +65,8 @@ export class Room {
   constructor() {
     this.id = manager.randomID();
     this.code = manager.randomCode();
-    this.songMap = Buffer.alloc(state.common.songMapLen);
-    this.songMap2 = Buffer.alloc((state.common.songMapLen + 7) >> 3);
+    this.songMap = Buffer.alloc(config.server.songMapLen);
+    this.songMap2 = Buffer.alloc((config.server.songMapLen + 7) >> 3);
 
     manager.roomCodeMap.set(this.code, this);
     manager.roomIdMap.set(this.idU64, this);
@@ -77,9 +77,9 @@ export class Room {
     this.songMap2.fill(0xFF);
     this.players.forEach(p => {
       if (!p) return;
-      for (let i = 0; i < state.common.songMapLen; i++)
+      for (let i = 0; i < config.server.songMapLen; i++)
         this.songMap[i] &= p.songMap[i];
-      for (let i = 0; i < ((state.common.songMapLen + 7) >> 3); i++)
+      for (let i = 0; i < ((config.server.songMapLen + 7) >> 3); i++)
         this.songMap2[i] &= p.songMap2[i];
     });
     if (force || !oldSongMap.equals(this.songMap))
@@ -92,7 +92,7 @@ export class Room {
     return (this.songMap[i] >> j) & 1 ? 'ok' : 'locked';
   }
   canSelectSong(songIdx: number) {
-    if (songIdx < 0 || songIdx >= state.common.songMapLen)
+    if (songIdx < 0 || songIdx >= config.server.songMapLen)
       return false;
     let i = songIdx >> 3, j = songIdx & 7;
     return !!((this.songMap2[i] >> j) & 1);
@@ -109,7 +109,7 @@ export class Room {
     if (this.state === RoomState.Idle && !this.isReady(PlayerState.Idle))       // 2 -> 1
       return this.setState(RoomState.Locked);
     if (this.state === RoomState.NotReady && this.isReady(PlayerState.Ready)) { // 3 -> 4
-      this.countdown = state.common.countdown.ready;
+      this.countdown = config.gameplay.countdown.ready;
       this.setState(RoomState.Countdown);
       this.#countdownStart = Date.now();
       return;
@@ -128,11 +128,11 @@ export class Room {
         this.clearPrepareInfo();
         this.broadcast(format11(null, this));
 
-        this.countdown += state.common.countdown.sync;
+        this.countdown += config.gameplay.countdown.sync;
         this.setState(RoomState.Syncing);
       }
       if (this.state === RoomState.Syncing && (this.countdown < 0 || this.isReady(PlayerState.Synced))) { // 5 -> 6
-        this.countdown += state.common.countdown.skill;
+        this.countdown += config.gameplay.countdown.skill;
         this.setState(RoomState.Skill);
       }
       return;
@@ -270,10 +270,11 @@ export class Room {
     this.broadcast(_pack11 ?? format11(nonce, this), format13(nonce, this));
   }
   destroy() {
+    this.players.forEach(p => p && p.destroy());
+
     manager.roomCodeMap.delete(this.code);
     manager.roomIdMap.delete(this.idU64);
 
-    this.players.forEach(p => p && p.destroy());
     this.players = [];
 
     logger.info('Room destroyed: ' + this.code);
@@ -290,7 +291,7 @@ export class Room {
   pushPack(pack: Buffer) {
     this.#commandQueue.push(pack);
     this.#totalQueueSize += getEncryptedSize(pack.length);
-    while (this.#totalQueueSize > state.common.packResendSizeLimit) {
+    while (this.#totalQueueSize > config.server.packResendSizeLimit) {
       let pack = this.#commandQueue.shift()!;
       this.#totalQueueSize -= getEncryptedSize(pack.length);
     }

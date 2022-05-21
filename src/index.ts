@@ -1,6 +1,5 @@
 import './config';
 import './logger';
-import './state';
 
 const { LinkPlayManager } = await import('./entities/manager');
 const adminServer = (await import('./routes/admin')).default;

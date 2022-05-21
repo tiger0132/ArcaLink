@@ -8,7 +8,7 @@ export const schema = p().struct([
   p('counter').u32(),    // [12, 16)
   p('nonce').u64(),      // [16, 24) nonce
 
-  p('songMap').buf(state.common.songMapLen),  // [24, 536)
+  p('songMap').buf(config.server.songMapLen),  // [24, 536)
 ]);
 
 export const format = (
@@ -29,5 +29,5 @@ export const format = (
 export const stringify = (data: typeof schema['type']) => [
   '[14 songmap-update]',
   `cnt=${data.counter}`,
-  state.common.debugLevel === 'less' ? null : `songMap=${stringifyBuf(data.songMap)}`,
+  config.debugLevel === 'less' ? null : `songMap=${stringifyBuf(data.songMap)}`,
 ].filter(x => x).join(', ');

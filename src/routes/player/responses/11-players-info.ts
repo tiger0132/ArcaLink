@@ -31,5 +31,5 @@ export const format = (
 export const stringify = (data: typeof schema['type']) => [
   '[11 players-info]',
   `cnt=${data.counter}`,
-  state.common.debugLevel === 'less' ? null : `players=\n` + util.inspect(data.playersInfo, { colors: true, depth: null }),
+  config.debugLevel === 'less' ? null : `players=\n` + util.inspect(data.playersInfo, { colors: true, depth: null }),
 ].filter(x => x).join(', ');

@@ -6,13 +6,28 @@ export interface Config {
       common: string;
       admin: string;
     };
-    store: string;
   };
   server: {
     playerPort: number;
     adminPort: number;
     key: string;
+
+    pingInterval: number;
+    packResendSizeLimit: number;
+    songMapLen: number;
   };
+  gameplay: {
+    countdown: {
+      ready: number;
+      sync: number;
+      skill: number;
+    };
+    timeout: {
+      normal: number;
+      playing: number;
+    };
+  };
+  debugLevel: 'less' | 'full';
 };
 
 const config: Config = {
@@ -21,13 +36,28 @@ const config: Config = {
       common: path.resolve('./logs/common'),
       admin: path.resolve('./logs/admin'),
     },
-    store: path.resolve('./data/state'),
   },
   server: {
     playerPort: 8081,
     adminPort: 8082,
-    key: '',
+    key: '', // 请求 admin api 时用于验证的 key；请随机生成一个
+
+    pingInterval: 1000, // 返回 0c 包的限速
+    packResendSizeLimit: 800, // 在包长度总和不超过该值时，补全所有包
+    songMapLen: 512, // orderedAllowedSongs 长度
   },
+  gameplay: {
+    countdown: {
+      ready: 3999, // 启动曲目的倒计时
+      sync: 9999, // 同步的倒计时
+      skill: 2999, // 技能显示的倒计时
+    },
+    timeout: {
+      normal: 60e3, // 正常情况的超时时间
+      playing: 15e3, // 游戏中的超时时间
+    },
+  },
+  debugLevel: 'less', // stringify 时显示的内容多少；没什么用（
 };
 
 global.config = config;

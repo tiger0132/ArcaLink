@@ -37,5 +37,5 @@ export const stringify = (data: typeof schema['type']) => [
   `cnt=${data.counter}`,
   `idx=${data.playerIndex}`,
   `songTime=${data.playerInfo.songTime}`,
-  state.common.debugLevel === 'less' ? null : `player=\n` + util.inspect(data.playerInfo, { colors: true, depth: null }),
+  config.debugLevel === 'less' ? null : `player=\n` + util.inspect(data.playerInfo, { colors: true, depth: null }),
 ].filter(x => x).join(', ');

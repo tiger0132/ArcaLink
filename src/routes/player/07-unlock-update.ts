@@ -12,7 +12,7 @@ export const schema = p().struct([
   p('counter').u32(),     // [12, 16)
   p('nonce').u64(),       // [16, 24) nonce
 
-  p('songMap').buf(state.common.songMapLen),  // [24, 536)
+  p('songMap').buf(config.server.songMapLen),  // [24, 536)
 ]);
 
 export const handler: PlayerHandler = ({ body, player }) => {

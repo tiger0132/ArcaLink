@@ -35,5 +35,5 @@ export const stringify = (data: typeof schema['type']) => [
   `countdown=${data.roomInfoWithHost.countdown}`,
   `interval=${data.roomInfoWithHost['interval?']}`,
   `times=${data.roomInfoWithHost['times?'].toString('hex')}`,
-  state.common.debugLevel === 'less' ? null : `room=\n` + util.inspect(data.roomInfoWithHost, { colors: true, depth: null }),
+  config.debugLevel === 'less' ? null : `room=\n` + util.inspect(data.roomInfoWithHost, { colors: true, depth: null }),
 ].filter(x => x).join(', ');

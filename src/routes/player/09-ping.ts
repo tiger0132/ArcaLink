@@ -47,7 +47,7 @@ export const handler: PlayerHandler = ({ body, player }, server) => {
   }
 
   // 返回正常 0c 包
-  if (Date.now() - player.lastPing >= state.common.pingInterval) {
+  if (Date.now() - player.lastPing >= config.server.pingInterval) {
     player.lastPing = Date.now();
     server.send(format0c(clientTime, room), player, true);
   }

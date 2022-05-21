@@ -39,13 +39,13 @@ export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
 }
 
 export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean, boolean]>): [Buffer, Buffer] {
-  let len = (state.common.songMapLen + 7) >> 3;
-  let result = Buffer.alloc(state.common.songMapLen);
+  let len = (config.server.songMapLen + 7) >> 3;
+  let result = Buffer.alloc(config.server.songMapLen);
   let result2 = Buffer.alloc(len);
   for (let i in songMap) {
     let song = songMap[i];
     let idx = parseInt(i, 10);
-    if (idx >= state.common.songMapLen || idx < 0) continue;
+    if (idx >= config.server.songMapLen || idx < 0) continue;
     let val = 0;
     val |= (song[0] ? 1 : 0) << 0;
     val |= (song[1] ? 1 : 0) << 1;
