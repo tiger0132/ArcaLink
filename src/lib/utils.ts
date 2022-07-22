@@ -38,10 +38,10 @@ export function encryptPack(token: Buffer, body: Buffer, key: Buffer) {
   return Buffer.concat([token, iv, authTag, encrypted, final]);
 }
 
+export const songMap2Len = (config.server.songMapLen * 2 + 7) >> 3;
 export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean, boolean]>): [Buffer, Buffer] {
-  let len = (config.server.songMapLen + 7) >> 3;
   let result = Buffer.alloc(config.server.songMapLen);
-  let result2 = Buffer.alloc(len);
+  let result2 = Buffer.alloc(songMap2Len);
   for (let i in songMap) {
     let song = songMap[i];
     let idx = parseInt(i, 10);
@@ -76,3 +76,7 @@ export const hrtime = () => {
 export const getEncryptedSize = (size: number) => ((size + 15) & 15) + 8 + 12 + 12;
 export const randomUInt = () => BigInt(randomInt(0, 4294967295));
 export const getDiffPair = (x: number) => [x >> 2, x & 3];
+
+export function notEmpty<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
+}

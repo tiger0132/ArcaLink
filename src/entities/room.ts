@@ -1,5 +1,5 @@
 import { Player } from './player';
-import { getDiffPair, getEncryptedSize, hrtime } from '@/lib/utils';
+import { getDiffPair, getEncryptedSize, hrtime, songMap2Len } from '@/lib/utils';
 import { ClearType, defaultPlayer, defaultPlayerWithName, defaultScore, PlayerInfoWithName, PlayerScore, PlayerState, RoomInfo, roomInfoSchema, RoomInfoWithHost, RoomState } from '@/lib/linkplay';
 import { p, Tuple, typeOf } from '@/lib/packer';
 import { format as format15 } from '@/routes/player/responses/15-full-roominfo';
@@ -66,7 +66,7 @@ export class Room {
     this.id = manager.randomID();
     this.code = manager.randomCode();
     this.songMap = Buffer.alloc(config.server.songMapLen);
-    this.songMap2 = Buffer.alloc((config.server.songMapLen + 7) >> 3);
+    this.songMap2 = Buffer.alloc(songMap2Len);
 
     manager.roomCodeMap.set(this.code, this);
     manager.roomIdMap.set(this.idU64, this);
@@ -79,7 +79,7 @@ export class Room {
       if (!p) return;
       for (let i = 0; i < config.server.songMapLen; i++)
         this.songMap[i] &= p.songMap[i];
-      for (let i = 0; i < ((config.server.songMapLen + 7) >> 3); i++)
+      for (let i = 0; i < songMap2Len; i++)
         this.songMap2[i] &= p.songMap2[i];
     });
     if (force || !oldSongMap.equals(this.songMap))
