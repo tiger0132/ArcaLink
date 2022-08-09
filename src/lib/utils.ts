@@ -45,7 +45,7 @@ export function parseSongMap(songMap: Record<number, [boolean, boolean, boolean,
   for (let i in songMap) {
     let song = songMap[i];
     let idx = parseInt(i, 10);
-    if (idx >= config.server.songMapLen || idx < 0) continue;
+    if (idx >= config.server.songMapLen * 2 || idx < 0) continue;
     let val = 0;
     val |= (song[0] ? 1 : 0) << 0;
     val |= (song[1] ? 1 : 0) << 1;

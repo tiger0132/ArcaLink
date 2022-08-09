@@ -11,7 +11,7 @@ import { format as format11 } from '../player/responses/11-players-info';
 import { format as format13 } from '../player/responses/13-part-roominfo';
 import { format as format14 } from '../player/responses/14-songmap-update';
 import { z } from 'zod';
-import { parseSongMap } from '@/lib/utils';
+import { notEmpty, parseSongMap } from '@/lib/utils';
 
 const app = new Koa();
 const router = new Router();
@@ -154,6 +154,30 @@ router.post('/multiplayer/room/join/:code', async ctx => {
       userId: player.userId,
       orderedAllowedSongs: room.songMap.toString('base64'),
     }
+  };
+});
+
+router.get('/multiplayer/room/list', async ctx => {
+  if (ctx.request.query?.key !== config.server.key) throw 'invalid key';
+
+  ctx.body = {
+    success: true,
+    data: [...manager.roomCodeMap.values()].map(room => ({
+      code: room.code,
+      countdown: room.countdown,
+      state: room.state,
+      lastSong: room.lastSong,
+      songIdxWithDiff: room.songIdxWithDiff,
+      playerCnt: room.playerCnt,
+      players: room.players.filter(notEmpty).map(p => ({
+        name: p.name.toString().replaceAll('\0', ''),
+        score: p.score,
+        songTime: p.songTime,
+        state: p.state,
+        isHost: p.room.host === p,
+      })),
+      roundRobin: room.roundRobin,
+    }))
   };
 });
 
