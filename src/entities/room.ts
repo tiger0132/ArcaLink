@@ -92,7 +92,7 @@ export class Room {
     return (this.songMap[i] >> j) & 1 ? 'ok' : 'locked';
   }
   canSelectSong(songIdx: number) {
-    if (songIdx < 0 || songIdx >= config.server.songMapLen)
+    if (songIdx < 0 || songIdx >= config.server.songMapLen * 2)
       return false;
     let i = songIdx >> 3, j = songIdx & 7;
     return !!((this.songMap2[i] >> j) & 1);
